@@ -2,7 +2,7 @@
 
 Firmware ESP-IDF puro para usar um **ESP32-S3 Super Mini** como um
 gamepad Bluetooth Low Energy. O eixo X vem de um Grove Rotary Angle Sensor
-(potenciômetro) e o botão START é um botão momentâneo.
+(potenciômetro) e há três botões digitais.
 
 O repositório é autossuficiente: os arquivos auxiliares `esp_hid_gap.c` e
 `esp_hid_gap.h` do exemplo oficial da Espressif estão versionados em `main/`.
@@ -12,9 +12,10 @@ Não é necessário criar outro projeto, copiar exemplos ou usar Arduino.
 
 - Estrutura de projeto pronta para clone, build e flash com ESP-IDF v5.5.
 - BLE HID configurado para usar NimBLE.
-- Descriptor HID: Game Pad, Report ID 1, eixo X assinado e um botão.
+- Descriptor HID: Game Pad, Report ID 1, eixo X assinado e três botões.
 - Build real concluído com sucesso em ESP-IDF v5.5 para o alvo ESP32-S3.
-- O firmware **ainda não foi gravado nem testado fisicamente no hardware**.
+- A inicialização do firmware e o anúncio BLE já foram verificados no hardware.
+- O eixo e os três botões ainda precisam do teste físico completo.
 - Os limites reais do potenciômetro ainda precisam ser calibrados após o
   primeiro teste.
 
@@ -22,13 +23,22 @@ Não é necessário criar outro projeto, copiar exemplos ou usar Arduino.
 
 | Função | Conexão no ESP32-S3 Super Mini |
 |---|---|
-| Grove Rotary Angle Sensor — SIG | GPIO1 / ADC1_CH0 |
-| Grove Rotary Angle Sensor — VCC | 3V3 |
-| Grove Rotary Angle Sensor — GND | GND |
-| Botão START | GPIO2 e GND |
+| Grove Rotary Angle Sensor — amarelo (SIG) | GPIO1 / ADC1_CH0 |
+| Grove Rotary Angle Sensor — branco (NC) | Não conectar |
+| Grove Rotary Angle Sensor — vermelho (VCC) | 3V3 |
+| Grove Rotary Angle Sensor — preto (GND) | GND |
+| Botão 1 externo | GPIO2 e GND |
+| Botão 2 de teste | BOOT da placa / GPIO0 |
+| Botão 3 externo (futuro) | GPIO4 e GND |
 
-O botão usa o pull-up interno do ESP32-S3: solto é nível alto e pressionado é
-nível baixo.
+Os botões usam os pull-ups internos do ESP32-S3: solto é nível alto e
+pressionado é nível baixo. Os botões externos devem apenas fechar o respectivo
+GPIO com GND, sem aplicar 3V3 ou 5V. GPIO0 também seleciona o modo de gravação:
+o botão BOOT pode ser usado durante a execução, mas não deve ficar pressionado
+ao ligar ou reiniciar a placa.
+
+Alimente o Grove com **3V3**, não com 5V. Como a saída analógica pode chegar
+até VCC, isso mantém a tensão no GPIO1 dentro da faixa do ESP32-S3.
 
 O ADC usa atenuação `ADC_ATTEN_DB_12`, resolução de 12 bits, média de 16
 amostras e envia um relatório a cada 20 ms. `ADC_MIN` e `ADC_MAX`, no início de
@@ -94,8 +104,10 @@ automaticamente após uma desconexão.
 O relatório de entrada usa **Report ID 1** e possui 3 bytes:
 
 - bytes 0–1: eixo X assinado de 16 bits, little-endian, de -32767 a +32767;
-- byte 2, bit 0: botão START (`1` = pressionado);
-- byte 2, bits 1–7: padding em zero.
+- byte 2, bit 0: botão 1 / GPIO2 (`1` = pressionado);
+- byte 2, bit 1: botão 2 / BOOT-GPIO0 (`1` = pressionado);
+- byte 2, bit 2: botão 3 / GPIO4 (`1` = pressionado);
+- byte 2, bits 3–7: padding em zero.
 
 O centro nominal do ADC é convertido para eixo próximo de zero. Navegadores
 expõem esse eixo pela Gamepad API normalizado aproximadamente entre `-1` e `1`.
@@ -104,7 +116,8 @@ expõem esse eixo pela Gamepad API normalizado aproximadamente entre `-1` e `1`.
 
 Depois de parear o dispositivo no sistema operacional, abra
 `server_teste/index.html` no Chrome ou Edge. A página usa `navigator.getGamepads()`
-para mostrar o eixo normalizado, o botão e uma representação do volante.
+para mostrar o eixo normalizado, qualquer botão pressionado e uma representação
+do volante.
 
 Alguns navegadores só liberam a leitura após uma interação com o gamepad. Se o
 eixo aparecer em outro índice, use o botão **Trocar índice do eixo** na página.

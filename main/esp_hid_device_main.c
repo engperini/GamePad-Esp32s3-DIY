@@ -33,7 +33,10 @@
 static const char *TAG = "VOLANTE_HID";
 
 #define PINO_SENSOR_ADC_CHANNEL ADC_CHANNEL_0 /* GPIO1 = ADC1_CH0 no ESP32-S3 */
-#define PINO_BOTAO              GPIO_NUM_2
+#define PINO_BOTAO_1            GPIO_NUM_2
+#define PINO_BOTAO_2_BOOT       GPIO_NUM_0
+#define PINO_BOTAO_3            GPIO_NUM_4
+#define QUANTIDADE_BOTOES       3
 
 /* Ajustar depois de medir o curso real do potenciometro no hardware. */
 #define ADC_MIN 0
@@ -47,7 +50,7 @@ static const char *TAG = "VOLANTE_HID";
 #define INTERVALO_MS      20
 #define HID_BATTERY_LEVEL 100
 
-/* Report ID 1: eixo X assinado de 16 bits (little-endian) + 1 botao. */
+/* Report ID 1: eixo X assinado de 16 bits (little-endian) + 3 botoes. */
 static const unsigned char gamepad_report_map[] = {
     0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
     0x09, 0x05,       /* USAGE (Game Pad) */
@@ -64,13 +67,13 @@ static const unsigned char gamepad_report_map[] = {
     0xC0,             /*   END_COLLECTION */
     0x05, 0x09,       /*   USAGE_PAGE (Button) */
     0x19, 0x01,       /*   USAGE_MINIMUM (Button 1) */
-    0x29, 0x01,       /*   USAGE_MAXIMUM (Button 1) */
+    0x29, 0x03,       /*   USAGE_MAXIMUM (Button 3) */
     0x15, 0x00,       /*   LOGICAL_MINIMUM (0) */
     0x25, 0x01,       /*   LOGICAL_MAXIMUM (1) */
     0x75, 0x01,       /*   REPORT_SIZE (1) */
-    0x95, 0x01,       /*   REPORT_COUNT (1) */
+    0x95, 0x03,       /*   REPORT_COUNT (3) */
     0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
-    0x75, 0x07,       /*   REPORT_SIZE (7), padding */
+    0x75, 0x05,       /*   REPORT_SIZE (5), padding */
     0x95, 0x01,       /*   REPORT_COUNT (1) */
     0x81, 0x03,       /*   INPUT (Const,Var,Abs) */
     0xC0              /* END_COLLECTION */
@@ -150,13 +153,30 @@ static int16_t mapear_para_eixo(int leitura_bruta)
     return (int16_t)(escala / (ADC_MAX - ADC_MIN) - 32767);
 }
 
-static esp_err_t enviar_relatorio_gamepad(int16_t eixo_x, bool botao_pressionado)
+static uint8_t ler_botoes(void)
+{
+    uint8_t botoes = 0;
+
+    if (gpio_get_level(PINO_BOTAO_1) == 0) {
+        botoes |= 1U << 0;
+    }
+    if (gpio_get_level(PINO_BOTAO_2_BOOT) == 0) {
+        botoes |= 1U << 1;
+    }
+    if (gpio_get_level(PINO_BOTAO_3) == 0) {
+        botoes |= 1U << 2;
+    }
+
+    return botoes;
+}
+
+static esp_err_t enviar_relatorio_gamepad(int16_t eixo_x, uint8_t botoes)
 {
     const uint16_t eixo_bits = (uint16_t)eixo_x;
     uint8_t buffer[GAMEPAD_REPORT_LEN] = {
         (uint8_t)(eixo_bits & 0xFF),
         (uint8_t)(eixo_bits >> 8),
-        botao_pressionado ? 0x01 : 0x00,
+        botoes,
     };
 
     return esp_hidd_dev_input_set(s_ble_hid_param.hid_dev, 0,
@@ -166,7 +186,7 @@ static esp_err_t enviar_relatorio_gamepad(int16_t eixo_x, bool botao_pressionado
 static void tarefa_leitura_volante(void *pv_parameters)
 {
     (void)pv_parameters;
-    bool botao_estado_anterior = false;
+    uint8_t botoes_estado_anterior = 0;
 
     while (true) {
         int leitura_bruta;
@@ -178,18 +198,22 @@ static void tarefa_leitura_volante(void *pv_parameters)
         }
 
         const int16_t eixo_x = mapear_para_eixo(leitura_bruta);
-        const bool botao_pressionado = gpio_get_level(PINO_BOTAO) == 0;
+        const uint8_t botoes = ler_botoes();
 
-        err = enviar_relatorio_gamepad(eixo_x, botao_pressionado);
+        err = enviar_relatorio_gamepad(eixo_x, botoes);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Falha ao enviar relatorio HID: %s", esp_err_to_name(err));
         }
 
-        if (botao_pressionado != botao_estado_anterior) {
-            ESP_LOGI(TAG, "Botao START: %s",
-                     botao_pressionado ? "pressionado" : "solto");
-            botao_estado_anterior = botao_pressionado;
+        const uint8_t botoes_alterados = botoes ^ botoes_estado_anterior;
+        for (unsigned int i = 0; i < QUANTIDADE_BOTOES; i++) {
+            const uint8_t mascara = 1U << i;
+            if ((botoes_alterados & mascara) != 0) {
+                ESP_LOGI(TAG, "Botao %u: %s", i + 1,
+                         (botoes & mascara) != 0 ? "pressionado" : "solto");
+            }
         }
+        botoes_estado_anterior = botoes;
 
         /* Para calibrar, habilite temporariamente esta linha:
          * ESP_LOGI(TAG, "ADC: %d, eixo: %" PRId16, leitura_bruta, eixo_x); */
@@ -289,7 +313,9 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     const gpio_config_t io_conf = {
-        .pin_bit_mask = 1ULL << PINO_BOTAO,
+        .pin_bit_mask = (1ULL << PINO_BOTAO_1) |
+                        (1ULL << PINO_BOTAO_2_BOOT) |
+                        (1ULL << PINO_BOTAO_3),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
