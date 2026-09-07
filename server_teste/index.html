@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teste do Volante — Volante DIY</title>
+<title>Teste do Volante — GamePad Sophia</title>
 <style>
   :root {
     --bg: #16181d;
@@ -134,11 +134,19 @@
     cursor: pointer;
   }
   button.calibrar:hover { border-color: var(--accent); color: var(--accent); }
+  select {
+    max-width: 220px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
+  }
 </style>
 </head>
 <body>
 
-  <h1>Teste do Volante</h1>
+  <h1>Teste do GamePad Sophia</h1>
   <p class="subtitulo">Leitura via Gamepad API — pareie o ESP32 no Bluetooth do sistema primeiro</p>
 
   <div class="status" id="status">
@@ -159,12 +167,26 @@
 
   <div class="painel">
     <div class="linha">
+      <label class="rotulo" for="seletorGamepad">Controle testado</label>
+      <select id="seletorGamepad">
+        <option value="">Nenhum gamepad detectado</option>
+      </select>
+    </div>
+    <div class="linha">
       <span class="rotulo">Ângulo (eixo bruto)</span>
       <span class="valor destaque" id="valorEixo">—</span>
     </div>
     <div class="linha">
-      <span class="rotulo">Botão START</span>
-      <span class="valor" id="valorBotao">solto <span class="start-led" id="ledBotao"></span></span>
+      <span class="rotulo">Botão 1 — GPIO2</span>
+      <span class="valor" id="valorBotao1">solto <span class="start-led" id="ledBotao1"></span></span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Botão 2 — BOOT</span>
+      <span class="valor" id="valorBotao2">solto <span class="start-led" id="ledBotao2"></span></span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Botão 3 — GPIO4</span>
+      <span class="valor" id="valorBotao3">solto <span class="start-led" id="ledBotao3"></span></span>
     </div>
     <div class="linha">
       <span class="rotulo">Nome do dispositivo</span>
@@ -187,16 +209,24 @@
 
 <script>
   const statusEl = document.getElementById('status');
+  const seletorGamepad = document.getElementById('seletorGamepad');
   const volanteSvg = document.getElementById('volanteSvg');
   const valorEixo = document.getElementById('valorEixo');
-  const valorBotao = document.getElementById('valorBotao');
-  const ledBotao = document.getElementById('ledBotao');
+  const indicadoresBotoes = [1, 2, 3].map(numero => ({
+    valor: document.getElementById(`valorBotao${numero}`),
+    led: document.getElementById(`ledBotao${numero}`),
+  }));
   const valorNome = document.getElementById('valorNome');
   const valorIndiceEixo = document.getElementById('valorIndiceEixo');
   const btnTrocarEixo = document.getElementById('btnTrocarEixo');
 
   let indiceEixoAtivo = 0;
   let anguloAtual = 0;
+  let assinaturaGamepads = '';
+
+  seletorGamepad.addEventListener('change', () => {
+    seletorGamepad.dataset.escolhaManual = 'true';
+  });
 
   btnTrocarEixo.addEventListener('click', () => {
     indiceEixoAtivo = (indiceEixoAtivo + 1) % 4;
@@ -213,11 +243,38 @@
   });
 
   function loop() {
-    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    let gp = null;
-    for (const g of gamepads) {
-      if (g) { gp = g; break; }
+    const gamepads = navigator.getGamepads
+      ? Array.from(navigator.getGamepads()).filter(Boolean)
+      : [];
+    const novaAssinatura = gamepads.map(g => `${g.index}:${g.id}`).join('|');
+
+    if (novaAssinatura !== assinaturaGamepads) {
+      const selecaoAnterior = seletorGamepad.value;
+      seletorGamepad.replaceChildren();
+
+      if (gamepads.length === 0) {
+        seletorGamepad.add(new Option('Nenhum gamepad detectado', ''));
+        delete seletorGamepad.dataset.escolhaManual;
+      } else {
+        for (const gamepad of gamepads) {
+          seletorGamepad.add(new Option(`${gamepad.index}: ${gamepad.id}`, gamepad.index));
+        }
+
+        const aindaExiste = gamepads.some(g => String(g.index) === selecaoAnterior);
+        const sophia = gamepads.find(g =>
+          /GamePad Sophia|Volante DIY|NimBLE|Vendor: 16c0.*Product: 05df/i.test(g.id)) ||
+          gamepads.find(g => g.axes.length === 1 && g.buttons.length === 3);
+        if (aindaExiste && seletorGamepad.dataset.escolhaManual === 'true') {
+          seletorGamepad.value = selecaoAnterior;
+        } else {
+          seletorGamepad.value = String((sophia || gamepads[0]).index);
+        }
+      }
+
+      assinaturaGamepads = novaAssinatura;
     }
+
+    const gp = gamepads.find(g => String(g.index) === seletorGamepad.value) || null;
 
     if (gp) {
       statusEl.classList.add('conectado');
@@ -233,10 +290,12 @@
       anguloAtual = bruto * 150;
       volanteSvg.style.transform = `rotate(${anguloAtual}deg)`;
 
-      // Botão START: normalmente button[0], mas confere todos
-      const algumPressionado = gp.buttons.some(b => b.pressed || b.value > 0.5);
-      valorBotao.childNodes[0].textContent = algumPressionado ? 'pressionado ' : 'solto ';
-      ledBotao.classList.toggle('ativo', algumPressionado);
+      indicadoresBotoes.forEach(({ valor, led }, indice) => {
+        const botao = gp.buttons[indice];
+        const pressionado = Boolean(botao && (botao.pressed || botao.value > 0.5));
+        valor.childNodes[0].textContent = pressionado ? 'pressionado ' : 'solto ';
+        led.classList.toggle('ativo', pressionado);
+      });
     } else {
       statusEl.classList.remove('conectado');
       statusEl.querySelector('.texto').textContent = 'Nenhum gamepad detectado';

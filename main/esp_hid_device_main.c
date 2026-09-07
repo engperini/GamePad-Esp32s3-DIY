@@ -21,6 +21,7 @@
 #include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
+#include "services/gap/ble_svc_gap.h"
 #endif
 
 #include "esp_hidd.h"
@@ -93,8 +94,8 @@ static esp_hid_device_config_t ble_hid_config = {
     .vendor_id = 0x16C0,
     .product_id = 0x05DF,
     .version = 0x0100,
-    .device_name = "Volante DIY",
-    .manufacturer_name = "Projeto Volante",
+    .device_name = "GamePad Sophia",
+    .manufacturer_name = "Sophia DIY",
     .serial_number = "0001",
     .report_maps = ble_report_maps,
     .report_maps_len = 1,
@@ -331,6 +332,12 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_hidd_dev_init(
         &ble_hid_config, ESP_HID_TRANSPORT_BLE,
         ble_hidd_event_callback, &s_ble_hid_param.hid_dev));
+    const int nome_gap_resultado =
+        ble_svc_gap_device_name_set(ble_hid_config.device_name);
+    if (nome_gap_resultado != 0) {
+        ESP_LOGE(TAG, "Falha ao definir nome GAP: %d", nome_gap_resultado);
+        ESP_ERROR_CHECK(ESP_FAIL);
+    }
     ESP_ERROR_CHECK(esp_hidd_dev_battery_set(
         s_ble_hid_param.hid_dev, HID_BATTERY_LEVEL));
 
@@ -338,5 +345,5 @@ void app_main(void)
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
     ESP_ERROR_CHECK(esp_nimble_enable(ble_hid_device_host_task));
 
-    ESP_LOGI(TAG, "Volante DIY pronto; aguardando pareamento BLE");
+    ESP_LOGI(TAG, "GamePad Sophia pronto; aguardando pareamento BLE");
 }

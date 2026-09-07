@@ -1,4 +1,4 @@
-# Volante DIY — ESP32-S3 BLE Gamepad
+# GamePad Sophia — ESP32-S3 BLE Gamepad
 
 Firmware ESP-IDF puro para usar um **ESP32-S3 Super Mini** como um
 gamepad Bluetooth Low Energy. O eixo X vem de um Grove Rotary Angle Sensor
@@ -91,7 +91,7 @@ O arquivo `sdkconfig.defaults` ativa Bluetooth e o host NimBLE. O comando
 Depois do primeiro flash:
 
 1. Abra as configurações Bluetooth do computador, celular ou TV.
-2. Procure por **Volante DIY**.
+2. Procure por **GamePad Sophia**.
 3. Faça o pareamento como um controle/gamepad Bluetooth.
 4. Se uma versão anterior já tiver sido pareada e o descriptor mudar, remova o
    dispositivo salvo no host e pareie novamente.
@@ -114,10 +114,16 @@ expõem esse eixo pela Gamepad API normalizado aproximadamente entre `-1` e `1`.
 
 ## Página de teste
 
-Depois de parear o dispositivo no sistema operacional, abra
-`server_teste/index.html` no Chrome ou Edge. A página usa `navigator.getGamepads()`
-para mostrar o eixo normalizado, qualquer botão pressionado e uma representação
-do volante.
+Depois de parear o dispositivo no sistema operacional, sirva a página por
+`localhost` para que o navegador disponibilize a Gamepad API:
+
+```powershell
+python -m http.server 8000 --directory server_teste
+```
+
+Abra `http://localhost:8000` no Chrome ou Edge. A página usa
+`navigator.getGamepads()` para mostrar o eixo normalizado, o estado individual
+dos três botões e uma representação do volante.
 
 Alguns navegadores só liberam a leitura após uma interação com o gamepad. Se o
 eixo aparecer em outro índice, use o botão **Trocar índice do eixo** na página.
