@@ -123,17 +123,6 @@
     padding: 1px 6px;
     color: var(--text);
   }
-  button.calibrar {
-    margin-top: 16px;
-    background: transparent;
-    border: 1px solid var(--line);
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  button.calibrar:hover { border-color: var(--accent); color: var(--accent); }
   select {
     max-width: 220px;
     background: var(--bg);
@@ -173,8 +162,16 @@
       </select>
     </div>
     <div class="linha">
-      <span class="rotulo">Ângulo (eixo bruto)</span>
-      <span class="valor destaque" id="valorEixo">—</span>
+      <span class="rotulo">Joystick X</span>
+      <span class="valor destaque" id="valorJoystickX">—</span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Joystick Y</span>
+      <span class="valor destaque" id="valorJoystickY">—</span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Volante Rx</span>
+      <span class="valor destaque" id="valorVolante">—</span>
     </div>
     <div class="linha">
       <span class="rotulo">Botão 1 — GPIO2</span>
@@ -189,48 +186,38 @@
       <span class="valor" id="valorBotao3">solto <span class="start-led" id="ledBotao3"></span></span>
     </div>
     <div class="linha">
-      <span class="rotulo">Nome do dispositivo</span>
-      <span class="valor" id="valorNome">—</span>
+      <span class="rotulo">Botão 4 — joystick SW</span>
+      <span class="valor" id="valorBotao4">solto <span class="start-led" id="ledBotao4"></span></span>
     </div>
     <div class="linha">
-      <span class="rotulo">Índice do eixo usado</span>
-      <span class="valor" id="valorIndiceEixo">—</span>
+      <span class="rotulo">Nome do dispositivo</span>
+      <span class="valor" id="valorNome">—</span>
     </div>
   </div>
 
   <p class="ajuda">
-    Se o volante não girar na tela ao mexer no sensor, tente apertar
-    qualquer botão do gamepad uma vez — alguns navegadores só
-    "ativam" a leitura do gamepad depois da primeira interação.
-    Se o eixo errado estiver sendo lido, use o botão abaixo para
-    testar os outros índices disponíveis.
+    Se os valores não mudarem, aperte BOOT ou o joystick uma vez — alguns
+    navegadores só ativam a leitura depois da primeira interação com o gamepad.
   </p>
-  <button class="calibrar" id="btnTrocarEixo">Trocar índice do eixo</button>
 
 <script>
   const statusEl = document.getElementById('status');
   const seletorGamepad = document.getElementById('seletorGamepad');
   const volanteSvg = document.getElementById('volanteSvg');
-  const valorEixo = document.getElementById('valorEixo');
-  const indicadoresBotoes = [1, 2, 3].map(numero => ({
+  const valorJoystickX = document.getElementById('valorJoystickX');
+  const valorJoystickY = document.getElementById('valorJoystickY');
+  const valorVolante = document.getElementById('valorVolante');
+  const indicadoresBotoes = [1, 2, 3, 4].map(numero => ({
     valor: document.getElementById(`valorBotao${numero}`),
     led: document.getElementById(`ledBotao${numero}`),
   }));
   const valorNome = document.getElementById('valorNome');
-  const valorIndiceEixo = document.getElementById('valorIndiceEixo');
-  const btnTrocarEixo = document.getElementById('btnTrocarEixo');
 
-  let indiceEixoAtivo = 0;
   let anguloAtual = 0;
   let assinaturaGamepads = '';
 
   seletorGamepad.addEventListener('change', () => {
     seletorGamepad.dataset.escolhaManual = 'true';
-  });
-
-  btnTrocarEixo.addEventListener('click', () => {
-    indiceEixoAtivo = (indiceEixoAtivo + 1) % 4;
-    valorIndiceEixo.textContent = indiceEixoAtivo;
   });
 
   window.addEventListener('gamepadconnected', (e) => {
@@ -263,7 +250,9 @@
         const aindaExiste = gamepads.some(g => String(g.index) === selecaoAnterior);
         const sophia = gamepads.find(g =>
           /GamePad Sophia|Volante DIY|NimBLE|Vendor: 16c0.*Product: 05df/i.test(g.id)) ||
-          gamepads.find(g => g.axes.length === 1 && g.buttons.length === 3);
+          gamepads.find(g =>
+            (g.axes.length === 3 && g.buttons.length === 4) ||
+            (g.axes.length === 1 && g.buttons.length === 3));
         if (aindaExiste && seletorGamepad.dataset.escolhaManual === 'true') {
           seletorGamepad.value = selecaoAnterior;
         } else {
@@ -280,14 +269,17 @@
       statusEl.classList.add('conectado');
       statusEl.querySelector('.texto').textContent = 'Conectado';
       valorNome.textContent = gp.id || '—';
-      valorIndiceEixo.textContent = indiceEixoAtivo;
 
-      // Eixo bruto: Gamepad API entrega valores de -1.0 a 1.0
-      const bruto = gp.axes[indiceEixoAtivo] !== undefined ? gp.axes[indiceEixoAtivo] : 0;
-      valorEixo.textContent = bruto.toFixed(3);
+      // A Gamepad API entrega cada eixo normalizado de -1.0 a 1.0.
+      const joystickX = gp.axes[0] ?? 0;
+      const joystickY = gp.axes[1] ?? 0;
+      const volante = gp.axes[2] ?? 0;
+      valorJoystickX.textContent = joystickX.toFixed(3);
+      valorJoystickY.textContent = joystickY.toFixed(3);
+      valorVolante.textContent = volante.toFixed(3);
 
-      // Gira o SVG do volante: bruto (-1..1) -> graus (-150..150)
-      anguloAtual = bruto * 150;
+      // Gira o SVG do volante: eixo Rx (-1..1) -> graus (-150..150).
+      anguloAtual = volante * 150;
       volanteSvg.style.transform = `rotate(${anguloAtual}deg)`;
 
       indicadoresBotoes.forEach(({ valor, led }, indice) => {

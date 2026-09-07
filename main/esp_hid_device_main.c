@@ -33,15 +33,20 @@
 
 static const char *TAG = "VOLANTE_HID";
 
-#define PINO_SENSOR_ADC_CHANNEL ADC_CHANNEL_0 /* GPIO1 = ADC1_CH0 no ESP32-S3 */
+#define CANAL_VOLANTE_ADC       ADC_CHANNEL_0 /* GPIO1 = ADC1_CH0 */
+#define CANAL_JOYSTICK_X_ADC    ADC_CHANNEL_4 /* GPIO5 = ADC1_CH4 */
+#define CANAL_JOYSTICK_Y_ADC    ADC_CHANNEL_5 /* GPIO6 = ADC1_CH5 */
 #define PINO_BOTAO_1            GPIO_NUM_2
 #define PINO_BOTAO_2_BOOT       GPIO_NUM_0
 #define PINO_BOTAO_3            GPIO_NUM_4
-#define QUANTIDADE_BOTOES       3
+#define PINO_BOTAO_4_JOYSTICK   GPIO_NUM_7
+#define QUANTIDADE_BOTOES       4
 
 /* Ajustar depois de medir o curso real do potenciometro no hardware. */
 #define ADC_MIN 0
 #define ADC_MAX 4095
+#define JOYSTICK_CENTRO 2048
+#define JOYSTICK_ZONA_MORTA 320
 
 #if ADC_MAX <= ADC_MIN
 #error "ADC_MAX deve ser maior que ADC_MIN"
@@ -51,7 +56,7 @@ static const char *TAG = "VOLANTE_HID";
 #define INTERVALO_MS      20
 #define HID_BATTERY_LEVEL 100
 
-/* Report ID 1: eixo X assinado de 16 bits (little-endian) + 3 botoes. */
+/* Report ID 1: joystick X/Y, volante Rx e 4 botoes. */
 static const unsigned char gamepad_report_map[] = {
     0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
     0x09, 0x05,       /* USAGE (Game Pad) */
@@ -60,28 +65,30 @@ static const unsigned char gamepad_report_map[] = {
     0x09, 0x01,       /*   USAGE (Pointer) */
     0xA1, 0x00,       /*   COLLECTION (Physical) */
     0x09, 0x30,       /*     USAGE (X) */
+    0x09, 0x31,       /*     USAGE (Y) */
+    0x09, 0x33,       /*     USAGE (Rx, volante) */
     0x16, 0x01, 0x80, /*     LOGICAL_MINIMUM (-32767) */
     0x26, 0xFF, 0x7F, /*     LOGICAL_MAXIMUM (32767) */
     0x75, 0x10,       /*     REPORT_SIZE (16) */
-    0x95, 0x01,       /*     REPORT_COUNT (1) */
+    0x95, 0x03,       /*     REPORT_COUNT (3) */
     0x81, 0x02,       /*     INPUT (Data,Var,Abs) */
     0xC0,             /*   END_COLLECTION */
     0x05, 0x09,       /*   USAGE_PAGE (Button) */
     0x19, 0x01,       /*   USAGE_MINIMUM (Button 1) */
-    0x29, 0x03,       /*   USAGE_MAXIMUM (Button 3) */
+    0x29, 0x04,       /*   USAGE_MAXIMUM (Button 4) */
     0x15, 0x00,       /*   LOGICAL_MINIMUM (0) */
     0x25, 0x01,       /*   LOGICAL_MAXIMUM (1) */
     0x75, 0x01,       /*   REPORT_SIZE (1) */
-    0x95, 0x03,       /*   REPORT_COUNT (3) */
+    0x95, 0x04,       /*   REPORT_COUNT (4) */
     0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
-    0x75, 0x05,       /*   REPORT_SIZE (5), padding */
+    0x75, 0x04,       /*   REPORT_SIZE (4), padding */
     0x95, 0x01,       /*   REPORT_COUNT (1) */
     0x81, 0x03,       /*   INPUT (Const,Var,Abs) */
     0xC0              /* END_COLLECTION */
 };
 
 #define GAMEPAD_REPORT_ID  1
-#define GAMEPAD_REPORT_LEN 3
+#define GAMEPAD_REPORT_LEN 7
 
 static esp_hid_raw_report_map_t ble_report_maps[] = {
     {
@@ -121,17 +128,20 @@ static void adc_iniciar(void)
         .bitwidth = ADC_BITWIDTH_12,
     };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(
-        s_adc1_handle, PINO_SENSOR_ADC_CHANNEL, &chan_config));
+        s_adc1_handle, CANAL_VOLANTE_ADC, &chan_config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(
+        s_adc1_handle, CANAL_JOYSTICK_X_ADC, &chan_config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(
+        s_adc1_handle, CANAL_JOYSTICK_Y_ADC, &chan_config));
 }
 
-static esp_err_t adc_ler_bruto(int *media)
+static esp_err_t adc_ler_bruto(adc_channel_t canal, int *media)
 {
     int32_t soma = 0;
 
     for (int i = 0; i < OVERSAMPLING; i++) {
         int leitura;
-        esp_err_t err = adc_oneshot_read(
-            s_adc1_handle, PINO_SENSOR_ADC_CHANNEL, &leitura);
+        esp_err_t err = adc_oneshot_read(s_adc1_handle, canal, &leitura);
         if (err != ESP_OK) {
             return err;
         }
@@ -142,7 +152,7 @@ static esp_err_t adc_ler_bruto(int *media)
     return ESP_OK;
 }
 
-static int16_t mapear_para_eixo(int leitura_bruta)
+static int16_t mapear_adc_para_eixo(int leitura_bruta)
 {
     if (leitura_bruta < ADC_MIN) {
         leitura_bruta = ADC_MIN;
@@ -152,6 +162,23 @@ static int16_t mapear_para_eixo(int leitura_bruta)
 
     const int64_t escala = (int64_t)(leitura_bruta - ADC_MIN) * 65534;
     return (int16_t)(escala / (ADC_MAX - ADC_MIN) - 32767);
+}
+
+static int16_t mapear_joystick_para_eixo(int leitura_bruta)
+{
+    const int limite_inferior = JOYSTICK_CENTRO - JOYSTICK_ZONA_MORTA;
+    const int limite_superior = JOYSTICK_CENTRO + JOYSTICK_ZONA_MORTA;
+
+    if (leitura_bruta < limite_inferior) {
+        const int64_t escala = (int64_t)(limite_inferior - leitura_bruta) * 32767;
+        return (int16_t)-(escala / limite_inferior);
+    }
+    if (leitura_bruta > limite_superior) {
+        const int64_t escala = (int64_t)(leitura_bruta - limite_superior) * 32767;
+        return (int16_t)(escala / (ADC_MAX - limite_superior));
+    }
+
+    return 0;
 }
 
 static uint8_t ler_botoes(void)
@@ -167,16 +194,26 @@ static uint8_t ler_botoes(void)
     if (gpio_get_level(PINO_BOTAO_3) == 0) {
         botoes |= 1U << 2;
     }
+    if (gpio_get_level(PINO_BOTAO_4_JOYSTICK) == 0) {
+        botoes |= 1U << 3;
+    }
 
     return botoes;
 }
 
-static esp_err_t enviar_relatorio_gamepad(int16_t eixo_x, uint8_t botoes)
+static esp_err_t enviar_relatorio_gamepad(int16_t joystick_x, int16_t joystick_y,
+                                          int16_t volante_rx, uint8_t botoes)
 {
-    const uint16_t eixo_bits = (uint16_t)eixo_x;
+    const uint16_t joystick_x_bits = (uint16_t)joystick_x;
+    const uint16_t joystick_y_bits = (uint16_t)joystick_y;
+    const uint16_t volante_bits = (uint16_t)volante_rx;
     uint8_t buffer[GAMEPAD_REPORT_LEN] = {
-        (uint8_t)(eixo_bits & 0xFF),
-        (uint8_t)(eixo_bits >> 8),
+        (uint8_t)(joystick_x_bits & 0xFF),
+        (uint8_t)(joystick_x_bits >> 8),
+        (uint8_t)(joystick_y_bits & 0xFF),
+        (uint8_t)(joystick_y_bits >> 8),
+        (uint8_t)(volante_bits & 0xFF),
+        (uint8_t)(volante_bits >> 8),
         botoes,
     };
 
@@ -190,18 +227,28 @@ static void tarefa_leitura_volante(void *pv_parameters)
     uint8_t botoes_estado_anterior = 0;
 
     while (true) {
-        int leitura_bruta;
-        esp_err_t err = adc_ler_bruto(&leitura_bruta);
+        int leitura_joystick_x;
+        int leitura_joystick_y;
+        int leitura_volante;
+        esp_err_t err = adc_ler_bruto(CANAL_JOYSTICK_X_ADC, &leitura_joystick_x);
+        if (err == ESP_OK) {
+            err = adc_ler_bruto(CANAL_JOYSTICK_Y_ADC, &leitura_joystick_y);
+        }
+        if (err == ESP_OK) {
+            err = adc_ler_bruto(CANAL_VOLANTE_ADC, &leitura_volante);
+        }
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Falha na leitura do ADC: %s", esp_err_to_name(err));
             vTaskDelay(pdMS_TO_TICKS(INTERVALO_MS));
             continue;
         }
 
-        const int16_t eixo_x = mapear_para_eixo(leitura_bruta);
+        const int16_t joystick_x = mapear_joystick_para_eixo(leitura_joystick_x);
+        const int16_t joystick_y = mapear_joystick_para_eixo(leitura_joystick_y);
+        const int16_t volante_rx = mapear_adc_para_eixo(leitura_volante);
         const uint8_t botoes = ler_botoes();
 
-        err = enviar_relatorio_gamepad(eixo_x, botoes);
+        err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_rx, botoes);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Falha ao enviar relatorio HID: %s", esp_err_to_name(err));
         }
@@ -217,7 +264,8 @@ static void tarefa_leitura_volante(void *pv_parameters)
         botoes_estado_anterior = botoes;
 
         /* Para calibrar, habilite temporariamente esta linha:
-         * ESP_LOGI(TAG, "ADC: %d, eixo: %" PRId16, leitura_bruta, eixo_x); */
+         * ESP_LOGI(TAG, "JX:%d JY:%d VOL:%d", leitura_joystick_x,
+         *          leitura_joystick_y, leitura_volante); */
         vTaskDelay(pdMS_TO_TICKS(INTERVALO_MS));
     }
 }
@@ -316,7 +364,8 @@ void app_main(void)
     const gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << PINO_BOTAO_1) |
                         (1ULL << PINO_BOTAO_2_BOOT) |
-                        (1ULL << PINO_BOTAO_3),
+                        (1ULL << PINO_BOTAO_3) |
+                        (1ULL << PINO_BOTAO_4_JOYSTICK),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
