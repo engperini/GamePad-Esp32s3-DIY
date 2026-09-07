@@ -1,151 +1,311 @@
-# GamePad Sophia — ESP32-S3 BLE Gamepad
+# GamePad Sophia — controle BLE com ESP32-S3
 
-Firmware ESP-IDF puro para usar um **ESP32-S3 Super Mini** como um
-gamepad Bluetooth Low Energy. Há um joystick analógico X/Y para navegação, um
-Grove Rotary Angle Sensor (potenciômetro) para o volante e quatro botões.
+Firmware em ESP-IDF para transformar um **ESP32-S3 Super Mini** em um gamepad
+Bluetooth Low Energy. O projeto possui:
 
-O repositório é autossuficiente: os arquivos auxiliares `esp_hid_gap.c` e
-`esp_hid_gap.h` do exemplo oficial da Espressif estão versionados em `main/`.
-Não é necessário criar outro projeto, copiar exemplos ou usar Arduino.
+- joystick analógico X/Y para navegar em menus;
+- potenciômetro Grove no eixo Rx para usar como volante;
+- três botões digitais, incluindo o BOOT da placa;
+- botão do próprio joystick como quarto botão;
+- página web local para testar todos os eixos e botões.
 
-## Status atual
+O projeto usa ESP-IDF puro, NimBLE e os arquivos auxiliares do exemplo oficial
+da Espressif. Não é necessário Arduino nem copiar arquivos de outros projetos.
 
-- Estrutura de projeto pronta para clone, build e flash com ESP-IDF v5.5.
-- BLE HID configurado para usar NimBLE.
-- Descriptor HID: Game Pad, Report ID 1, joystick X/Y, volante Rx e quatro botões.
-- Build real concluído com sucesso em ESP-IDF v5.5 para o alvo ESP32-S3.
-- A inicialização do firmware e o anúncio BLE já foram verificados no hardware.
-- Os três eixos e os quatro botões ainda precisam do teste físico completo.
-- Os limites reais do potenciômetro ainda precisam ser calibrados após o
-  primeiro teste.
+## Atenção antes de ligar ou soldar
 
-## Hardware e pinagem
+> **Use 3,3 V no Grove e no joystick. Não use 5 V.**
 
-| Função | Conexão no ESP32-S3 Super Mini |
+O pino de alimentação do joystick pode estar marcado como `5V`, mas neste
+projeto ele deve ser ligado ao pino **3V3** do ESP32-S3. As saídas VRX e VRY
+acompanham a tensão de alimentação; alimentar o módulo com 5 V pode danificar as
+entradas analógicas do ESP32-S3.
+
+Antes de soldar:
+
+1. Desconecte o cabo USB e qualquer bateria.
+2. Confira a serigrafia impressa ao lado de cada pino da placa.
+3. Faça as ligações de alimentação primeiro: GND e depois 3V3.
+4. Faça as ligações de sinal.
+5. Use um multímetro para verificar se não existe curto entre 3V3 e GND.
+6. Só então conecte o USB.
+
+Todos os módulos e botões precisam compartilhar o mesmo **GND**.
+
+## Materiais
+
+- 1 × ESP32-S3 Super Mini com Bluetooth;
+- 1 × joystick analógico de cinco pinos (`GND`, `5V`/VCC, `VRX`, `VRY`, `SW`);
+- 1 × Grove Rotary Angle Sensor;
+- até 2 × botões momentâneos normalmente abertos para GPIO2 e GPIO4;
+- fios, solda e cabo USB de dados.
+
+Os botões externos são opcionais. O botão BOOT e o botão SW do joystick já
+permitem testar dois botões sem componentes adicionais.
+
+## Mapa físico do ESP32-S3 Super Mini
+
+![Mapa físico dos pinos do GamePad Sophia](docs/mapa-pinos.svg)
+
+O desenho representa a versão comum do ESP32-S3 Super Mini, vista pelo lado dos
+componentes e com o USB-C apontando para baixo. Alguns fabricantes mudam o
+layout entre lotes: **a identificação impressa na sua placa é sempre a referência
+final**.
+
+Mapa em texto para consulta rápida:
+
+```text
+           ESP32-S3 SUPER MINI — VISTA DE CIMA
+              componentes voltados para você
+
+                ┌────────────────────┐
+ não usado  TX  ○│                    │○ 5V    NÃO USAR
+ não usado  RX  ○│                    │○ GND   terra comum
+ Grove SIG   1  ○│                    │○ 3V3   Grove + joystick
+ botão 1     2  ○│                    │○ 13    não usado
+ evitar      3  ○│                    │○ 12    não usado
+ botão 3     4  ○│                    │○ 11    não usado
+ VRX         5  ○│                    │○ 10    não usado
+ VRY         6  ○│  BOOT = botão 2   │○ 9     não usado
+ SW          7  ○│                    │○ 8     não usado
+                └─────── USB-C ──────┘
+```
+
+GPIO0 não aparece na fileira lateral porque já está ligado ao botão **BOOT** da
+placa. GPIO3 é um pino de configuração de inicialização e foi deixado livre.
+
+## Ligações completas
+
+### Joystick analógico
+
+| Pino escrito no joystick | Ligar no ESP32-S3 | Função no gamepad |
+|---|---|---|
+| `GND` | `GND` | Terra comum |
+| `5V` ou `VCC` | **`3V3`** | Alimentação segura |
+| `VRX` | `GPIO5` / ADC1_CH4 | Eixo X do joystick |
+| `VRY` | `GPIO6` / ADC1_CH5 | Eixo Y do joystick |
+| `SW` | `GPIO7` | Botão 4 |
+
+O firmware aplica uma zona morta no centro do joystick para reduzir movimento
+involuntário nos menus.
+
+### Grove Rotary Angle Sensor
+
+| Cor do fio Grove | Ligar no ESP32-S3 | Função |
+|---|---|---|
+| Amarelo | `GPIO1` / ADC1_CH0 | Sinal analógico do volante Rx |
+| Branco | Não conectar | NC, sem uso |
+| Vermelho | `3V3` | Alimentação |
+| Preto | `GND` | Terra comum |
+
+### Botões
+
+| Botão no gamepad | Ligação | Observação |
+|---|---|---|
+| Botão 1 | botão externo entre `GPIO2` e `GND` | Opcional |
+| Botão 2 | botão `BOOT` da placa / GPIO0 | Já existe na placa |
+| Botão 3 | botão externo entre `GPIO4` e `GND` | Opcional |
+| Botão 4 | `SW` do joystick em `GPIO7` | Pressionar o joystick |
+
+Para os botões externos, use contatos momentâneos normalmente abertos:
+
+```text
+GPIO2 ───── botão 1 ───── GND
+GPIO4 ───── botão 3 ───── GND
+```
+
+Não ligue 3V3 ou 5V aos botões. O firmware ativa os resistores pull-up internos:
+o botão solto fica em nível alto e o botão pressionado fecha o GPIO com GND.
+
+O BOOT funciona como botão 2 depois que o firmware inicia. Não mantenha BOOT
+pressionado enquanto liga ou reinicia a placa, pois GPIO0 em nível baixo durante
+a inicialização coloca o ESP32-S3 no modo de gravação.
+
+## Mapeamento reconhecido pelo computador
+
+| Controle físico | Entrada HID |
 |---|---|
-| Grove Rotary Angle Sensor — amarelo (SIG) | GPIO1 / ADC1_CH0 |
-| Grove Rotary Angle Sensor — branco (NC) | Não conectar |
-| Grove Rotary Angle Sensor — vermelho (VCC) | 3V3 |
-| Grove Rotary Angle Sensor — preto (GND) | GND |
-| Joystick — pino “5V”/VCC | **3V3** |
-| Joystick — GND | GND |
-| Joystick — VRX | GPIO5 / ADC1_CH4 |
-| Joystick — VRY | GPIO6 / ADC1_CH5 |
-| Joystick — SW | GPIO7 / botão 4 |
-| Botão 1 externo | GPIO2 e GND |
-| Botão 2 de teste | BOOT da placa / GPIO0 |
-| Botão 3 externo (futuro) | GPIO4 e GND |
+| Joystick esquerda/direita | Eixo X |
+| Joystick cima/baixo | Eixo Y |
+| Grove / volante | Eixo Rx |
+| Botão externo GPIO2 | Botão 1 |
+| BOOT | Botão 2 |
+| Botão externo GPIO4 | Botão 3 |
+| Pressionar o joystick | Botão 4 |
 
-Os botões usam os pull-ups internos do ESP32-S3: solto é nível alto e
-pressionado é nível baixo. Os botões externos devem apenas fechar o respectivo
-GPIO com GND, sem aplicar 3V3 ou 5V. GPIO0 também seleciona o modo de gravação:
-o botão BOOT pode ser usado durante a execução, mas não deve ficar pressionado
-ao ligar ou reiniciar a placa.
+O relatório HID usa Report ID 1, três eixos assinados de 16 bits e quatro bits
+de botão. Uma atualização é enviada a cada 20 ms.
 
-Alimente o Grove e o joystick com **3V3**, não com 5V. Mesmo que o pino de
-alimentação do joystick esteja marcado “5V”, suas saídas analógicas podem chegar
-até VCC; usar 3V3 mantém GPIO1, GPIO5 e GPIO6 dentro da faixa do ESP32-S3. O
-botão SW do joystick fecha GPIO7 com GND quando pressionado.
+## Instalação do ambiente
 
-O ADC usa atenuação `ADC_ATTEN_DB_12`, resolução de 12 bits, média de 16
-amostras e envia um relatório a cada 20 ms. `ADC_MIN` e `ADC_MAX`, no início de
-`main/esp_hid_device_main.c`, permanecem configuráveis para a calibração futura.
+Use **ESP-IDF v5.5.x** com suporte ao ESP32-S3.
 
-## Requisitos
+### Windows
 
-- ESP-IDF v5.5 instalado com o toolchain para ESP32-S3.
-- Git.
-- Cabo USB de dados e a porta serial correspondente à placa.
+1. Instale o Git.
+2. Instale o ESP-IDF v5.5 pelo instalador oficial da Espressif.
+3. No menu Iniciar, abra **ESP-IDF 5.5 PowerShell** ou **ESP-IDF 5.5 Command Prompt**.
+4. Confirme a versão:
 
-Antes de usar `idf.py`, ative o ambiente do ESP-IDF no terminal conforme a sua
-instalação.
+```powershell
+idf.py --version
+```
 
-Linux/macOS (exemplo):
+O resultado deve mostrar `ESP-IDF v5.5` ou outra versão `v5.5.x`.
+
+### Linux ou macOS
+
+Depois de instalar o ESP-IDF v5.5, ative o ambiente. Exemplo:
 
 ```bash
 . "$HOME/esp/esp-idf/export.sh"
 idf.py --version
 ```
 
-Windows: abra o **ESP-IDF PowerShell/Command Prompt** instalado pela Espressif,
-ou execute o script de exportação indicado pela sua instalação. `idf.py
---version` deve informar v5.5.x.
+Consulte o guia oficial caso o ESP-IDF ainda não esteja instalado:
+[Get Started — ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32s3/get-started/index.html).
 
-## Clone, build e flash
+## Baixar e compilar
+
+Execute no terminal com o ambiente ESP-IDF ativo:
 
 ```bash
 git clone https://github.com/engperini/GamePad-Esp32s3-DIY.git
 cd GamePad-Esp32s3-DIY
 idf.py set-target esp32s3
 idf.py build
-idf.py flash monitor
 ```
 
-Se a porta não for detectada automaticamente:
+Ao final, deve aparecer `Project build complete`. O arquivo
+`sdkconfig.defaults` já ativa Bluetooth, NimBLE e o serviço HID.
+
+## Identificar a porta correta
+
+Nunca copie uma porta COM de outro computador sem conferir.
+
+No Windows:
+
+1. Abra o **Gerenciador de Dispositivos**.
+2. Expanda **Portas (COM e LPT)**.
+3. Desconecte e reconecte somente o ESP32-S3.
+4. Anote a porta que desaparece e reaparece, por exemplo `COM7`.
+
+No Linux, normalmente será `/dev/ttyACM0` ou `/dev/ttyUSB0`. No macOS,
+normalmente será `/dev/cu.usbmodem...` ou `/dev/cu.usbserial...`.
+
+## Gravar o firmware
+
+Substitua `COM7` pela porta identificada no seu computador:
+
+```powershell
+idf.py -p COM7 flash monitor
+```
+
+No Linux ou macOS, exemplo:
 
 ```bash
-idf.py -p COM5 flash monitor
+idf.py -p /dev/ttyACM0 flash monitor
 ```
 
-No Linux, a porta normalmente tem formato `/dev/ttyACM0` ou `/dev/ttyUSB0`.
-Troque o exemplo pela porta real. Para sair do monitor, use `Ctrl+]`.
+O monitor deve mostrar mensagens semelhantes a:
 
-O arquivo `sdkconfig.defaults` ativa Bluetooth e o host NimBLE. O comando
-`idf.py set-target esp32s3` gera o `sdkconfig` local para o ESP32-S3.
+```text
+HID iniciado
+GamePad Sophia pronto; aguardando pareamento BLE
+```
 
-## Pareamento Bluetooth
+Use `Ctrl+]` para sair do monitor serial. Se a gravação não iniciar
+automaticamente, segure BOOT, pressione e solte RESET, solte BOOT e tente o
+comando novamente.
 
-Depois do primeiro flash:
+## Parear por Bluetooth
 
 1. Abra as configurações Bluetooth do computador, celular ou TV.
-2. Procure por **GamePad Sophia**.
-3. Faça o pareamento como um controle/gamepad Bluetooth.
-4. Se uma versão anterior já tiver sido pareada e o descriptor mudar, remova o
-   dispositivo salvo no host e pareie novamente.
+2. Adicione um novo dispositivo Bluetooth.
+3. Selecione **GamePad Sophia**.
+4. Quando solicitado, informe o PIN **123456**.
+5. Aguarde o sistema indicar que o controle está conectado.
 
-O firmware anuncia o appearance BLE específico de gamepad e volta a anunciar
-automaticamente após uma desconexão.
+Se uma versão anterior do firmware já foi pareada, remova o dispositivo antigo
+do Bluetooth e faça o pareamento novamente. O Windows pode manter em cache o
+nome e o descritor HID antigos.
 
-## Relatório HID
+## Testar no Windows
 
-O relatório de entrada usa **Report ID 1** e possui 7 bytes:
+### Teste nativo
 
-- bytes 0–1: joystick X assinado de 16 bits, little-endian;
-- bytes 2–3: joystick Y assinado de 16 bits, little-endian;
-- bytes 4–5: volante Rx assinado de 16 bits, little-endian;
-- byte 6, bit 0: botão 1 / GPIO2 (`1` = pressionado);
-- byte 6, bit 1: botão 2 / BOOT-GPIO0 (`1` = pressionado);
-- byte 6, bit 2: botão 3 / GPIO4 (`1` = pressionado);
-- byte 6, bit 3: botão 4 / joystick SW-GPIO7 (`1` = pressionado);
-- byte 6, bits 4–7: padding em zero.
+1. Pressione `Win + R`.
+2. Digite `joy.cpl` e pressione Enter.
+3. Selecione **GamePad Sophia**.
+4. Clique em **Propriedades** e abra a aba **Testar**.
+5. Mova o joystick, gire o volante e pressione os botões.
 
-O joystick possui zona morta configurável ao redor do centro para evitar
-movimento involuntário nos menus. Navegadores expõem os eixos pela Gamepad API
-normalizados aproximadamente entre `-1` e `1`.
+### Página web incluída
 
-## Página de teste
-
-Depois de parear o dispositivo no sistema operacional, sirva a página por
-`localhost` para que o navegador disponibilize a Gamepad API:
+Com o gamepad pareado, execute na pasta do repositório:
 
 ```powershell
 python -m http.server 8000 --directory server_teste
 ```
 
-Abra `http://localhost:8000` no Chrome ou Edge. A página usa
-`navigator.getGamepads()` para mostrar os três eixos normalizados, o estado
-individual dos quatro botões e uma representação do volante.
+Abra [http://localhost:8000](http://localhost:8000) no Chrome ou Edge e pressione
+um botão do gamepad. A página mostra joystick X/Y, volante Rx e os quatro botões.
 
-Alguns navegadores só liberam a leitura após uma interação com o gamepad. Não é
-usado Web Bluetooth: o pareamento HID é feito pelo sistema operacional e a
-página acessa o controle pela Gamepad API.
+Se houver outro joystick conectado, use o campo **Controle testado** para
+selecionar o GamePad Sophia. Dependendo do Windows e do navegador, ele pode
+aparecer como `Unknown Gamepad`; nesse caso, escolha o controle que possui três
+eixos e quatro botões.
 
-## Estrutura
+## Calibração
+
+Os valores abaixo ficam no início de `main/esp_hid_device_main.c`:
+
+- `ADC_MIN` e `ADC_MAX`: limites do Grove/volante;
+- `JOYSTICK_CENTRO`: centro nominal do joystick;
+- `JOYSTICK_ZONA_MORTA`: região central ignorada para evitar movimento sozinho.
+
+O Grove possui curso mecânico aproximado de 300°, mas o curso usado na montagem
+pode ser menor. Depois da montagem definitiva, meça as leituras nos dois
+extremos, ajuste os valores e compile novamente.
+
+## Solução de problemas
+
+### O controle não aparece no Bluetooth
+
+- confirme que o log mostrou `GamePad Sophia pronto`;
+- desligue e ligue o Bluetooth do computador;
+- remova pareamentos antigos chamados `Volante DIY`, `NimBLE` ou
+  `GamePad Sophia` e pareie novamente.
+
+### A placa mostra “waiting for download”
+
+GPIO0 ficou baixo durante a inicialização. Solte o botão BOOT e pressione RESET.
+
+### Joystick parado, mas o menu se move sozinho
+
+- confira se o joystick está alimentado por 3V3 e compartilha o mesmo GND;
+- confira VRX no GPIO5 e VRY no GPIO6;
+- aumente `JOYSTICK_ZONA_MORTA` e compile novamente.
+
+### Eixo não chega até o final ou está invertido
+
+Isso depende da tolerância e da posição mecânica de cada sensor. Registre os
+valores reais, ajuste a calibração no firmware e compile novamente.
+
+### A página web mostra outro controle
+
+Escolha o dispositivo correto no campo **Controle testado**. A página não usa
+Web Bluetooth; ela lê os controles já pareados pelo sistema através da Gamepad
+API do navegador.
+
+## Estrutura do repositório
 
 ```text
 .
 ├── CMakeLists.txt
 ├── sdkconfig.defaults
+├── docs/
+│   └── mapa-pinos.svg
 ├── main/
 │   ├── CMakeLists.txt
 │   ├── esp_hid_device_main.c
@@ -155,12 +315,14 @@ página acessa o controle pela Gamepad API.
     └── index.html
 ```
 
-`esp_hid_gap.c` e `esp_hid_gap.h` preservam os cabeçalhos SPDX e o conteúdo do
-exemplo `examples/bluetooth/esp_hid_device/main/` do ESP-IDF v5.5.
+`esp_hid_gap.c` e `esp_hid_gap.h` são baseados no exemplo
+`examples/bluetooth/esp_hid_device/main/` do ESP-IDF v5.5 e preservam os
+cabeçalhos SPDX originais.
 
-## Antes do primeiro uso real
+## Estado do projeto
 
-O Grove Rotary Angle Sensor tem curso mecânico aproximado de 300°, mas o curso
-usado pelo volante pode ser menor. Após o primeiro flash, registre as leituras
-brutas nos extremos, ajuste `ADC_MIN` e `ADC_MAX` e compile novamente. Não há
-calibração definitiva embutida porque ela depende da montagem física.
+- build validado com ESP-IDF v5.5 para ESP32-S3;
+- firmware gravado e inicialização verificada em hardware;
+- anúncio, pareamento BLE e envio de relatórios HID verificados;
+- nome Bluetooth configurado como **GamePad Sophia**;
+- calibração fina dos sensores depende da montagem física de cada usuário.

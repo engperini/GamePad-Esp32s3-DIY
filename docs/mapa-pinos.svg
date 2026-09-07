@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Mapa de pinos do GamePad Sophia no ESP32-S3 Super Mini</title>
+  <desc id="desc">Vista superior da placa com USB-C para baixo, destacando GPIO1, GPIO2, GPIO4, GPIO5, GPIO6, GPIO7, 3V3, GND e o botão BOOT.</desc>
+  <style>
+    text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #18212b; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #536170; }
+    .board { fill: #17212b; stroke: #0c1117; stroke-width: 5; }
+    .module { fill: #33414f; stroke: #94a3b8; stroke-width: 3; }
+    .usb { fill: #cbd5e1; stroke: #64748b; stroke-width: 4; }
+    .pad { stroke: #18212b; stroke-width: 2; }
+    .unused { fill: #cbd5e1; }
+    .power { fill: #ef4444; }
+    .ground { fill: #111827; }
+    .sensor { fill: #eab308; }
+    .joystick { fill: #06b6d4; }
+    .button { fill: #22c55e; }
+    .pin { font-size: 18px; font-weight: 700; }
+    .function { font-size: 16px; fill: #536170; }
+    .inside { font-size: 16px; font-weight: 700; fill: #f8fafc; }
+    .legend { font-size: 16px; font-weight: 600; }
+    .warning { font-size: 18px; font-weight: 700; fill: #b91c1c; }
+  </style>
+
+  <rect width="1200" height="900" fill="#f8fafc"/>
+  <text x="600" y="52" text-anchor="middle" class="title">GamePad Sophia — mapa físico de pinos</text>
+  <text x="600" y="84" text-anchor="middle" class="subtitle">Vista de cima: componentes visíveis e conector USB-C apontando para baixo</text>
+
+  <rect x="430" y="120" width="340" height="650" rx="28" class="board"/>
+  <rect x="490" y="145" width="220" height="155" rx="12" class="module"/>
+  <text x="600" y="215" text-anchor="middle" class="inside">ESP32-S3</text>
+  <text x="600" y="242" text-anchor="middle" class="inside">Super Mini</text>
+  <rect x="535" y="740" width="130" height="58" rx="10" class="usb"/>
+  <text x="600" y="835" text-anchor="middle" class="pin">USB-C</text>
+
+  <!-- Left edge, top to bottom -->
+  <circle cx="430" cy="345" r="13" class="pad unused"/>
+  <text x="395" y="351" text-anchor="end" class="pin">TX</text>
+  <text x="245" y="351" text-anchor="end" class="function">não usado</text>
+
+  <circle cx="430" cy="395" r="13" class="pad unused"/>
+  <text x="395" y="401" text-anchor="end" class="pin">RX</text>
+  <text x="245" y="401" text-anchor="end" class="function">não usado</text>
+
+  <circle cx="430" cy="445" r="13" class="pad sensor"/>
+  <text x="395" y="451" text-anchor="end" class="pin">GPIO1</text>
+  <text x="245" y="451" text-anchor="end" class="function">Grove amarelo / SIG</text>
+
+  <circle cx="430" cy="495" r="13" class="pad button"/>
+  <text x="395" y="501" text-anchor="end" class="pin">GPIO2</text>
+  <text x="245" y="501" text-anchor="end" class="function">botão externo 1</text>
+
+  <circle cx="430" cy="545" r="13" class="pad unused"/>
+  <text x="395" y="551" text-anchor="end" class="pin">GPIO3</text>
+  <text x="245" y="551" text-anchor="end" class="function">não usar neste projeto</text>
+
+  <circle cx="430" cy="595" r="13" class="pad button"/>
+  <text x="395" y="601" text-anchor="end" class="pin">GPIO4</text>
+  <text x="245" y="601" text-anchor="end" class="function">botão externo 3</text>
+
+  <circle cx="430" cy="645" r="13" class="pad joystick"/>
+  <text x="395" y="651" text-anchor="end" class="pin">GPIO5</text>
+  <text x="245" y="651" text-anchor="end" class="function">joystick VRX</text>
+
+  <circle cx="430" cy="695" r="13" class="pad joystick"/>
+  <text x="395" y="701" text-anchor="end" class="pin">GPIO6</text>
+  <text x="245" y="701" text-anchor="end" class="function">joystick VRY</text>
+
+  <circle cx="430" cy="745" r="13" class="pad button"/>
+  <text x="395" y="751" text-anchor="end" class="pin">GPIO7</text>
+  <text x="245" y="751" text-anchor="end" class="function">joystick SW / botão 4</text>
+
+  <!-- Right edge, top to bottom -->
+  <circle cx="770" cy="345" r="13" class="pad power"/>
+  <text x="805" y="351" class="pin">5V</text>
+  <text x="925" y="351" class="warning">NÃO USAR</text>
+
+  <circle cx="770" cy="395" r="13" class="pad ground"/>
+  <text x="805" y="401" class="pin">GND</text>
+  <text x="925" y="401" class="function">terra comum</text>
+
+  <circle cx="770" cy="445" r="13" class="pad power"/>
+  <text x="805" y="451" class="pin">3V3</text>
+  <text x="925" y="451" class="function">Grove + joystick</text>
+
+  <circle cx="770" cy="495" r="13" class="pad unused"/>
+  <text x="805" y="501" class="pin">GPIO13</text>
+  <circle cx="770" cy="545" r="13" class="pad unused"/>
+  <text x="805" y="551" class="pin">GPIO12</text>
+  <circle cx="770" cy="595" r="13" class="pad unused"/>
+  <text x="805" y="601" class="pin">GPIO11</text>
+  <circle cx="770" cy="645" r="13" class="pad unused"/>
+  <text x="805" y="651" class="pin">GPIO10</text>
+  <circle cx="770" cy="695" r="13" class="pad unused"/>
+  <text x="805" y="701" class="pin">GPIO9</text>
+  <circle cx="770" cy="745" r="13" class="pad unused"/>
+  <text x="805" y="751" class="pin">GPIO8</text>
+
+  <rect x="470" y="670" width="110" height="42" rx="9" class="button"/>
+  <text x="525" y="696" text-anchor="middle" class="inside">BOOT</text>
+  <text x="590" y="693" class="inside">botão 2 / GPIO0</text>
+
+  <circle cx="185" cy="855" r="11" class="sensor"/><text x="205" y="861" class="legend">Volante Grove</text>
+  <circle cx="390" cy="855" r="11" class="joystick"/><text x="410" y="861" class="legend">Joystick</text>
+  <circle cx="570" cy="855" r="11" class="button"/><text x="590" y="861" class="legend">Botões</text>
+  <circle cx="720" cy="855" r="11" class="power"/><text x="740" y="861" class="legend">Alimentação</text>
+  <circle cx="910" cy="855" r="11" class="ground"/><text x="930" y="861" class="legend">GND</text>
+</svg>
