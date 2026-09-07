@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teste do Volante — Volante DIY</title>
+<style>
+  :root {
+    --bg: #16181d;
+    --panel: #1e2128;
+    --line: #33373f;
+    --text: #e8e6e1;
+    --dim: #8b8f98;
+    --accent: #4fb0ff;
+    --ok: #5ad176;
+    --warn: #e8b23d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .subtitulo {
+    color: var(--dim);
+    font-size: 14px;
+    margin: 0 0 32px;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+  .status .ponto {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--warn);
+  }
+  .status.conectado .ponto { background: var(--ok); }
+  .status.conectado .texto { color: var(--ok); }
+
+  .volante-wrap {
+    position: relative;
+    width: min(70vw, 260px);
+    aspect-ratio: 1;
+    margin-bottom: 28px;
+  }
+  .volante {
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+    transition: transform 40ms linear;
+  }
+
+  .painel {
+    width: min(90vw, 380px);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .linha:last-child { border-bottom: none; }
+  .linha .rotulo { color: var(--dim); }
+  .linha .valor {
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+  }
+  .linha .valor.destaque {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .start-led {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--line);
+    margin-left: 8px;
+    vertical-align: middle;
+    transition: background 60ms;
+  }
+  .start-led.ativo { background: var(--ok); }
+
+  .ajuda {
+    max-width: 380px;
+    margin-top: 24px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--dim);
+  }
+  .ajuda code {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text);
+  }
+  button.calibrar {
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.calibrar:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <h1>Teste do Volante</h1>
+  <p class="subtitulo">Leitura via Gamepad API — pareie o ESP32 no Bluetooth do sistema primeiro</p>
+
+  <div class="status" id="status">
+    <span class="ponto"></span>
+    <span class="texto">Nenhum gamepad detectado</span>
+  </div>
+
+  <div class="volante-wrap">
+    <svg class="volante" id="volanteSvg" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#33373f" stroke-width="18"/>
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#4fb0ff" stroke-width="18"
+              stroke-dasharray="8 10" stroke-linecap="round" opacity="0.35"/>
+      <rect x="94" y="18" width="12" height="60" rx="6" fill="#4fb0ff"/>
+      <circle cx="100" cy="100" r="22" fill="#1e2128" stroke="#33373f" stroke-width="2"/>
+      <rect x="96" y="14" width="8" height="14" rx="2" fill="#e8b23d"/>
+    </svg>
+  </div>
+
+  <div class="painel">
+    <div class="linha">
+      <span class="rotulo">Ângulo (eixo bruto)</span>
+      <span class="valor destaque" id="valorEixo">—</span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Botão START</span>
+      <span class="valor" id="valorBotao">solto <span class="start-led" id="ledBotao"></span></span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Nome do dispositivo</span>
+      <span class="valor" id="valorNome">—</span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Índice do eixo usado</span>
+      <span class="valor" id="valorIndiceEixo">—</span>
+    </div>
+  </div>
+
+  <p class="ajuda">
+    Se o volante não girar na tela ao mexer no sensor, tente apertar
+    qualquer botão do gamepad uma vez — alguns navegadores só
+    "ativam" a leitura do gamepad depois da primeira interação.
+    Se o eixo errado estiver sendo lido, use o botão abaixo para
+    testar os outros índices disponíveis.
+  </p>
+  <button class="calibrar" id="btnTrocarEixo">Trocar índice do eixo</button>
+
+<script>
+  const statusEl = document.getElementById('status');
+  const volanteSvg = document.getElementById('volanteSvg');
+  const valorEixo = document.getElementById('valorEixo');
+  const valorBotao = document.getElementById('valorBotao');
+  const ledBotao = document.getElementById('ledBotao');
+  const valorNome = document.getElementById('valorNome');
+  const valorIndiceEixo = document.getElementById('valorIndiceEixo');
+  const btnTrocarEixo = document.getElementById('btnTrocarEixo');
+
+  let indiceEixoAtivo = 0;
+  let anguloAtual = 0;
+
+  btnTrocarEixo.addEventListener('click', () => {
+    indiceEixoAtivo = (indiceEixoAtivo + 1) % 4;
+    valorIndiceEixo.textContent = indiceEixoAtivo;
+  });
+
+  window.addEventListener('gamepadconnected', (e) => {
+    console.log('Gamepad conectado:', e.gamepad);
+  });
+
+  window.addEventListener('gamepaddisconnected', () => {
+    statusEl.classList.remove('conectado');
+    statusEl.querySelector('.texto').textContent = 'Gamepad desconectado';
+  });
+
+  function loop() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    for (const g of gamepads) {
+      if (g) { gp = g; break; }
+    }
+
+    if (gp) {
+      statusEl.classList.add('conectado');
+      statusEl.querySelector('.texto').textContent = 'Conectado';
+      valorNome.textContent = gp.id || '—';
+      valorIndiceEixo.textContent = indiceEixoAtivo;
+
+      // Eixo bruto: Gamepad API entrega valores de -1.0 a 1.0
+      const bruto = gp.axes[indiceEixoAtivo] !== undefined ? gp.axes[indiceEixoAtivo] : 0;
+      valorEixo.textContent = bruto.toFixed(3);
+
+      // Gira o SVG do volante: bruto (-1..1) -> graus (-150..150)
+      anguloAtual = bruto * 150;
+      volanteSvg.style.transform = `rotate(${anguloAtual}deg)`;
+
+      // Botão START: normalmente button[0], mas confere todos
+      const algumPressionado = gp.buttons.some(b => b.pressed || b.value > 0.5);
+      valorBotao.childNodes[0].textContent = algumPressionado ? 'pressionado ' : 'solto ';
+      ledBotao.classList.toggle('ativo', algumPressionado);
+    } else {
+      statusEl.classList.remove('conectado');
+      statusEl.querySelector('.texto').textContent = 'Nenhum gamepad detectado';
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+</script>
+</body>
+</html>
