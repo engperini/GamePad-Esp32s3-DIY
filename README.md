@@ -1,147 +1,137 @@
-# Volante DIY — Firmware ESP-IDF (ESP32-S3 Super Mini)
+# Volante DIY — ESP32-S3 BLE Gamepad
 
-Firmware ESP-IDF 5.5 puro (sem Arduino) que expõe um ESP32-S3 Super
-Mini como gamepad Bluetooth LE (BLE HID), lendo um Grove Rotary Angle
-Sensor (potenciômetro) e um botão START. Funciona em qualquer host que
-aceite gamepads BLE genéricos: Android TV / Google TV, Windows, Linux.
+Firmware ESP-IDF puro para usar um **ESP32-S3 Super Mini** como um
+gamepad Bluetooth Low Energy. O eixo X vem de um Grove Rotary Angle Sensor
+(potenciômetro) e o botão START é um botão momentâneo.
 
-## Por que este repo não é um projeto ESP-IDF completo por si só
+O repositório é autossuficiente: os arquivos auxiliares `esp_hid_gap.c` e
+`esp_hid_gap.h` do exemplo oficial da Espressif estão versionados em `main/`.
+Não é necessário criar outro projeto, copiar exemplos ou usar Arduino.
 
-O suporte de baixo nível para GAP (advertising, pareamento, bonding)
-via NimBLE é grande e delicado (`esp_hid_gap.c`, ~500 linhas). Em vez
-de reconstruir esse arquivo, este repositório reaproveita o exemplo
-oficial **`examples/bluetooth/esp_hid_device`**, já incluído em
-qualquer instalação do ESP-IDF, e substitui apenas o arquivo principal
-pela lógica específica deste volante.
+## Status atual
 
-Isso significa que, para compilar, você precisa gerar o projeto base a
-partir do exemplo oficial primeiro (passo 1 abaixo) — os arquivos
-`esp_hid_gap.c`/`esp_hid_gap.h` vêm de lá, testados pela Espressif, e
-não estão neste repositório.
+- Estrutura de projeto pronta para clone, build e flash com ESP-IDF v5.5.
+- BLE HID configurado para usar NimBLE.
+- Descriptor HID: Game Pad, Report ID 1, eixo X assinado e um botão.
+- Build real concluído com sucesso em ESP-IDF v5.5 para o alvo ESP32-S3.
+- O firmware **ainda não foi gravado nem testado fisicamente no hardware**.
+- Os limites reais do potenciômetro ainda precisam ser calibrados após o
+  primeiro teste.
 
-## Estrutura deste repositório
+## Hardware e pinagem
 
-```
-main/
-  esp_hid_device_main.c   - lógica do volante (substitui o arquivo de
-                             mesmo nome do exemplo oficial)
-  CMakeLists.txt          - dependências do componente main
-CMakeLists.txt            - raiz do projeto ESP-IDF
-server_teste/
-  index.html              - página de teste (Gamepad API do navegador)
-```
+| Função | Conexão no ESP32-S3 Super Mini |
+|---|---|
+| Grove Rotary Angle Sensor — SIG | GPIO1 / ADC1_CH0 |
+| Grove Rotary Angle Sensor — VCC | 3V3 |
+| Grove Rotary Angle Sensor — GND | GND |
+| Botão START | GPIO2 e GND |
 
-## Passo a passo — do zero até compilar
+O botão usa o pull-up interno do ESP32-S3: solto é nível alto e pressionado é
+nível baixo.
 
-### 1. Ambiente ESP-IDF 5.5
+O ADC usa atenuação `ADC_ATTEN_DB_12`, resolução de 12 bits, média de 16
+amostras e envia um relatório a cada 20 ms. `ADC_MIN` e `ADC_MAX`, no início de
+`main/esp_hid_device_main.c`, permanecem configuráveis para a calibração futura.
 
-Confirme que o ambiente está ativo no terminal:
+## Requisitos
 
-```bash
-. $HOME/esp/esp-idf/export.sh   # ou o caminho da sua instalação
-idf.py --version                # deve mostrar v5.5.x
-```
+- ESP-IDF v5.5 instalado com o toolchain para ESP32-S3.
+- Git.
+- Cabo USB de dados e a porta serial correspondente à placa.
 
-### 2. Gerar o projeto base a partir do exemplo oficial
+Antes de usar `idf.py`, ative o ambiente do ESP-IDF no terminal conforme a sua
+instalação.
 
-```bash
-idf.py create-project-from-example "espressif/esp-idf:bluetooth/esp_hid_device"
-mv esp_hid_device volante-diy-build
-cd volante-diy-build
-```
-
-Isso cria `main/esp_hid_gap.c`, `main/esp_hid_gap.h` e o resto da
-estrutura, testados e mantidos pela Espressif.
-
-### 3. Sobrepor com os arquivos deste repositório
-
-Supondo que você clonou este repositório em `~/volante-diy-firmware`:
+Linux/macOS (exemplo):
 
 ```bash
-cp ~/volante-diy-firmware/main/esp_hid_device_main.c main/esp_hid_device_main.c
-cp ~/volante-diy-firmware/main/CMakeLists.txt main/CMakeLists.txt
-cp -r ~/volante-diy-firmware/server_teste .
+. "$HOME/esp/esp-idf/export.sh"
+idf.py --version
 ```
 
-### 4. Configurar o alvo e o Bluetooth
+Windows: abra o **ESP-IDF PowerShell/Command Prompt** instalado pela Espressif,
+ou execute o script de exportação indicado pela sua instalação. `idf.py
+--version` deve informar v5.5.x.
+
+## Clone, build e flash
 
 ```bash
+git clone https://github.com/engperini/GamePad-Esp32s3-DIY.git
+cd GamePad-Esp32s3-DIY
 idf.py set-target esp32s3
-idf.py menuconfig
+idf.py build
+idf.py flash monitor
 ```
 
-Dentro do menuconfig, confirme:
-- `Component config` > `Bluetooth` > habilitado
-- `Component config` > `Bluetooth` > `Host` > **NimBLE - Enabled**
-
-Salve (`S`) e saia (`Q`).
-
-### 5. Compilar, gravar e monitorar
+Se a porta não for detectada automaticamente:
 
 ```bash
-idf.py build
-idf.py -p /dev/ttyACM0 flash monitor
+idf.py -p COM5 flash monitor
 ```
 
-(troque `/dev/ttyACM0` pela porta serial real — Windows: `COMx`;
-Linux: `/dev/ttyUSB0` ou `/dev/ttyACM0`)
+No Linux, a porta normalmente tem formato `/dev/ttyACM0` ou `/dev/ttyUSB0`.
+Troque o exemplo pela porta real. Para sair do monitor, use `Ctrl+]`.
 
-Sair do monitor: `Ctrl+]`
+O arquivo `sdkconfig.defaults` ativa Bluetooth e o host NimBLE. O comando
+`idf.py set-target esp32s3` gera o `sdkconfig` local para o ESP32-S3.
 
-## Pinout (ESP32-S3 Super Mini)
+## Pareamento Bluetooth
 
-Pinos "seguros" — sem função de boot/strapping:
+Depois do primeiro flash:
 
-| Função        | Pino                        |
-|---------------|------------------------------|
-| Sensor (SIG)  | GPIO1 (ADC1_CH0)             |
-| Sensor (VCC)  | 3V3                          |
-| Sensor (GND)  | GND                           |
-| Botão START   | GPIO2 (outra perna → GND)     |
+1. Abra as configurações Bluetooth do computador, celular ou TV.
+2. Procure por **Volante DIY**.
+3. Faça o pareamento como um controle/gamepad Bluetooth.
+4. Se uma versão anterior já tiver sido pareada e o descriptor mudar, remova o
+   dispositivo salvo no host e pareie novamente.
 
-Se sua placa específica tiver esses pinos ocupados, ajuste
-`PINO_SENSOR_ADC_CHANNEL` e `PINO_BOTAO` no topo de
-`main/esp_hid_device_main.c`.
+O firmware anuncia o appearance BLE específico de gamepad e volta a anunciar
+automaticamente após uma desconexão.
 
-## Calibração do sensor
+## Relatório HID
 
-O Grove Rotary Angle Sensor gira ~300°, não 360° — o range elétrico
-real do giro físico do seu volante provavelmente não é 0-4095.
-Instruções de calibração completas estão comentadas no final de
-`main/esp_hid_device_main.c`.
+O relatório de entrada usa **Report ID 1** e possui 3 bytes:
 
-## Testar no PC (sem alterar o firmware)
+- bytes 0–1: eixo X assinado de 16 bits, little-endian, de -32767 a +32767;
+- byte 2, bit 0: botão START (`1` = pressionado);
+- byte 2, bits 1–7: padding em zero.
 
-1. Grave o firmware (passo 5 acima)
-2. Windows > Configurações > Bluetooth > Adicionar dispositivo >
-   selecione **"Volante DIY"** > parear (como qualquer controle)
-3. Abra `server_teste/index.html` num navegador (Chrome/Edge) — não
-   precisa de servidor rodando, dá para abrir o arquivo direto
-4. Gire o volante — o desenho na página deve girar junto
+O centro nominal do ADC é convertido para eixo próximo de zero. Navegadores
+expõem esse eixo pela Gamepad API normalizado aproximadamente entre `-1` e `1`.
 
-**Por que não dá para usar Web Bluetooth direto:** o firmware expõe
-um dispositivo HID, e o Chrome bloqueia por segurança que páginas web
-se conectem a dispositivos HID via Web Bluetooth. O sistema
-operacional pareia o HID normalmente, e a página só lê o que o SO já
-expõe através da Gamepad API.
+## Página de teste
 
-## Formato do relatório HID (gamepad)
+Depois de parear o dispositivo no sistema operacional, abra
+`server_teste/index.html` no Chrome ou Edge. A página usa `navigator.getGamepads()`
+para mostrar o eixo normalizado, o botão e uma representação do volante.
 
-Relatório de entrada (`report ID 1`), 3 bytes:
-- Bytes 0–1: eixo X, 16 bits, little-endian, faixa 0–32767
-- Byte 2, bit 0: estado do botão START (1 = pressionado)
-- Byte 2, bits 1–7: padding (sempre 0)
+Alguns navegadores só liberam a leitura após uma interação com o gamepad. Se o
+eixo aparecer em outro índice, use o botão **Trocar índice do eixo** na página.
+Não é usado Web Bluetooth: o pareamento HID é feito pelo sistema operacional e
+a página acessa o controle pela Gamepad API.
 
-Para adicionar mais eixos/botões, edite `gamepadReportMap` em
-`main/esp_hid_device_main.c` seguindo a especificação HID Usage Tables
-(Generic Desktop / Button), e ajuste o buffer em
-`enviar_relatorio_gamepad()` de acordo.
+## Estrutura
 
-## Status
+```text
+.
+├── CMakeLists.txt
+├── sdkconfig.defaults
+├── main/
+│   ├── CMakeLists.txt
+│   ├── esp_hid_device_main.c
+│   ├── esp_hid_gap.c
+│   └── esp_hid_gap.h
+└── server_teste/
+    └── index.html
+```
 
-- ✅ Firmware compilável conceitualmente (revisado à mão; não
-  compilado neste ambiente por falta do toolchain ESP-IDF completo —
-  confira o build na sua máquina e abra uma issue se algo não bater)
-- ⬜ Calibração dos valores `ADC_MIN`/`ADC_MAX` reais — depende do seu
-  hardware específico
-- ⬜ Testado fisicamente no Android TV
+`esp_hid_gap.c` e `esp_hid_gap.h` preservam os cabeçalhos SPDX e o conteúdo do
+exemplo `examples/bluetooth/esp_hid_device/main/` do ESP-IDF v5.5.
+
+## Antes do primeiro uso real
+
+O Grove Rotary Angle Sensor tem curso mecânico aproximado de 300°, mas o curso
+usado pelo volante pode ser menor. Após o primeiro flash, registre as leituras
+brutas nos extremos, ajuste `ADC_MIN` e `ADC_MAX` e compile novamente. Não há
+calibração definitiva embutida porque ela depende da montagem física.
