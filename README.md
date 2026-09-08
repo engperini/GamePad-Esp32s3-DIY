@@ -260,6 +260,8 @@ eixos e quatro botões.
 
 Os valores abaixo ficam no início de `main/esp_hid_device_main.c`:
 
+- `JOYSTICK_HABILITADO`: use `0` enquanto VRX/VRY estiverem desconectados para
+  manter X/Y em zero; troque para `1` depois de instalar o joystick;
 - `ADC_MIN` e `ADC_MAX`: limites do Grove/volante;
 - `JOYSTICK_CENTRO`: centro nominal do joystick;
 - `JOYSTICK_ZONA_MORTA`: região central ignorada para evitar movimento sozinho.

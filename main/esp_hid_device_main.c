@@ -42,6 +42,9 @@ static const char *TAG = "VOLANTE_HID";
 #define PINO_BOTAO_4_JOYSTICK   GPIO_NUM_7
 #define QUANTIDADE_BOTOES       4
 
+/* Use 1 depois de ligar VRX/VRY. Em 0, X e Y ficam centrados e sem ruido. */
+#define JOYSTICK_HABILITADO 0
+
 /* Ajustar depois de medir o curso real do potenciometro no hardware. */
 #define ADC_MIN 0
 #define ADC_MAX 4095
@@ -129,10 +132,12 @@ static void adc_iniciar(void)
     };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(
         s_adc1_handle, CANAL_VOLANTE_ADC, &chan_config));
+#if JOYSTICK_HABILITADO
     ESP_ERROR_CHECK(adc_oneshot_config_channel(
         s_adc1_handle, CANAL_JOYSTICK_X_ADC, &chan_config));
     ESP_ERROR_CHECK(adc_oneshot_config_channel(
         s_adc1_handle, CANAL_JOYSTICK_Y_ADC, &chan_config));
+#endif
 }
 
 static esp_err_t adc_ler_bruto(adc_channel_t canal, int *media)
@@ -164,6 +169,7 @@ static int16_t mapear_adc_para_eixo(int leitura_bruta)
     return (int16_t)(escala / (ADC_MAX - ADC_MIN) - 32767);
 }
 
+#if JOYSTICK_HABILITADO
 static int16_t mapear_joystick_para_eixo(int leitura_bruta)
 {
     const int limite_inferior = JOYSTICK_CENTRO - JOYSTICK_ZONA_MORTA;
@@ -180,6 +186,7 @@ static int16_t mapear_joystick_para_eixo(int leitura_bruta)
 
     return 0;
 }
+#endif
 
 static uint8_t ler_botoes(void)
 {
@@ -227,13 +234,17 @@ static void tarefa_leitura_volante(void *pv_parameters)
     uint8_t botoes_estado_anterior = 0;
 
     while (true) {
+#if JOYSTICK_HABILITADO
         int leitura_joystick_x;
         int leitura_joystick_y;
-        int leitura_volante;
         esp_err_t err = adc_ler_bruto(CANAL_JOYSTICK_X_ADC, &leitura_joystick_x);
         if (err == ESP_OK) {
             err = adc_ler_bruto(CANAL_JOYSTICK_Y_ADC, &leitura_joystick_y);
         }
+#else
+        esp_err_t err = ESP_OK;
+#endif
+        int leitura_volante;
         if (err == ESP_OK) {
             err = adc_ler_bruto(CANAL_VOLANTE_ADC, &leitura_volante);
         }
@@ -243,8 +254,13 @@ static void tarefa_leitura_volante(void *pv_parameters)
             continue;
         }
 
+#if JOYSTICK_HABILITADO
         const int16_t joystick_x = mapear_joystick_para_eixo(leitura_joystick_x);
         const int16_t joystick_y = mapear_joystick_para_eixo(leitura_joystick_y);
+#else
+        const int16_t joystick_x = 0;
+        const int16_t joystick_y = 0;
+#endif
         const int16_t volante_rx = mapear_adc_para_eixo(leitura_volante);
         const uint8_t botoes = ler_botoes();
 
