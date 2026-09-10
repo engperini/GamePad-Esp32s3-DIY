@@ -37,13 +37,14 @@ static const char *TAG = "VOLANTE_HID";
 #define CANAL_JOYSTICK_X_ADC    ADC_CHANNEL_4 /* GPIO5 = ADC1_CH4 */
 #define CANAL_JOYSTICK_Y_ADC    ADC_CHANNEL_5 /* GPIO6 = ADC1_CH5 */
 #define PINO_BOTAO_1            GPIO_NUM_2
-#define PINO_BOTAO_2_BOOT       GPIO_NUM_0
+#define PINO_BOTAO_2            GPIO_NUM_3
+#define PINO_BOTAO_5_BOOT       GPIO_NUM_0
 #define PINO_BOTAO_3            GPIO_NUM_4
 #define PINO_BOTAO_4_JOYSTICK   GPIO_NUM_7
-#define QUANTIDADE_BOTOES       4
+#define QUANTIDADE_BOTOES       5
 
-/* Use 1 depois de ligar VRX/VRY. Em 0, X e Y ficam centrados e sem ruido. */
-#define JOYSTICK_HABILITADO 0
+/* Use 1 depois de ligar VRX/VRY. Em 0, Rx e Ry ficam centrados e sem ruido. */
+#define JOYSTICK_HABILITADO 1
 
 /* Ajustar depois de medir o curso real do potenciometro no hardware. */
 #define ADC_MIN 0
@@ -59,7 +60,7 @@ static const char *TAG = "VOLANTE_HID";
 #define INTERVALO_MS      20
 #define HID_BATTERY_LEVEL 100
 
-/* Report ID 1: joystick X/Y, volante Rx e 4 botoes. */
+/* Report ID 1: L: volante X/Y=0; R: joystick Rx/Ry; 5 botoes. */
 static const unsigned char gamepad_report_map[] = {
     0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
     0x09, 0x05,       /* USAGE (Game Pad) */
@@ -69,29 +70,30 @@ static const unsigned char gamepad_report_map[] = {
     0xA1, 0x00,       /*   COLLECTION (Physical) */
     0x09, 0x30,       /*     USAGE (X) */
     0x09, 0x31,       /*     USAGE (Y) */
-    0x09, 0x33,       /*     USAGE (Rx, volante) */
+    0x09, 0x33,       /*     USAGE (Rx, joystick horizontal) */
+    0x09, 0x34,       /*     USAGE (Ry, joystick vertical) */
     0x16, 0x01, 0x80, /*     LOGICAL_MINIMUM (-32767) */
     0x26, 0xFF, 0x7F, /*     LOGICAL_MAXIMUM (32767) */
     0x75, 0x10,       /*     REPORT_SIZE (16) */
-    0x95, 0x03,       /*     REPORT_COUNT (3) */
+    0x95, 0x04,       /*     REPORT_COUNT (4 axes) */
     0x81, 0x02,       /*     INPUT (Data,Var,Abs) */
     0xC0,             /*   END_COLLECTION */
     0x05, 0x09,       /*   USAGE_PAGE (Button) */
     0x19, 0x01,       /*   USAGE_MINIMUM (Button 1) */
-    0x29, 0x04,       /*   USAGE_MAXIMUM (Button 4) */
+    0x29, 0x05,       /*   USAGE_MAXIMUM (Button 5) */
     0x15, 0x00,       /*   LOGICAL_MINIMUM (0) */
     0x25, 0x01,       /*   LOGICAL_MAXIMUM (1) */
     0x75, 0x01,       /*   REPORT_SIZE (1) */
-    0x95, 0x04,       /*   REPORT_COUNT (4) */
+    0x95, 0x05,       /*   REPORT_COUNT (5 buttons) */
     0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
-    0x75, 0x04,       /*   REPORT_SIZE (4), padding */
+    0x75, 0x03,       /*   REPORT_SIZE (3), padding */
     0x95, 0x01,       /*   REPORT_COUNT (1) */
     0x81, 0x03,       /*   INPUT (Const,Var,Abs) */
     0xC0              /* END_COLLECTION */
 };
 
 #define GAMEPAD_REPORT_ID  1
-#define GAMEPAD_REPORT_LEN 7
+#define GAMEPAD_REPORT_LEN 9
 
 static esp_hid_raw_report_map_t ble_report_maps[] = {
     {
@@ -195,7 +197,7 @@ static uint8_t ler_botoes(void)
     if (gpio_get_level(PINO_BOTAO_1) == 0) {
         botoes |= 1U << 0;
     }
-    if (gpio_get_level(PINO_BOTAO_2_BOOT) == 0) {
+    if (gpio_get_level(PINO_BOTAO_2) == 0) {
         botoes |= 1U << 1;
     }
     if (gpio_get_level(PINO_BOTAO_3) == 0) {
@@ -205,22 +207,27 @@ static uint8_t ler_botoes(void)
         botoes |= 1U << 3;
     }
 
+    if (gpio_get_level(PINO_BOTAO_5_BOOT) == 0) {
+        botoes |= 1U << 4;
+    }
+
     return botoes;
 }
 
 static esp_err_t enviar_relatorio_gamepad(int16_t joystick_x, int16_t joystick_y,
-                                          int16_t volante_rx, uint8_t botoes)
+                                          int16_t volante_lx, uint8_t botoes)
 {
     const uint16_t joystick_x_bits = (uint16_t)joystick_x;
     const uint16_t joystick_y_bits = (uint16_t)joystick_y;
-    const uint16_t volante_bits = (uint16_t)volante_rx;
+    const uint16_t volante_bits = (uint16_t)volante_lx;
     uint8_t buffer[GAMEPAD_REPORT_LEN] = {
+        (uint8_t)(volante_bits & 0xFF), /* L horizontal */
+        (uint8_t)(volante_bits >> 8),
+        0, 0, /* L vertical: sem sensor, sempre centralizado */
         (uint8_t)(joystick_x_bits & 0xFF),
         (uint8_t)(joystick_x_bits >> 8),
         (uint8_t)(joystick_y_bits & 0xFF),
         (uint8_t)(joystick_y_bits >> 8),
-        (uint8_t)(volante_bits & 0xFF),
-        (uint8_t)(volante_bits >> 8),
         botoes,
     };
 
@@ -261,10 +268,10 @@ static void tarefa_leitura_volante(void *pv_parameters)
         const int16_t joystick_x = 0;
         const int16_t joystick_y = 0;
 #endif
-        const int16_t volante_rx = mapear_adc_para_eixo(leitura_volante);
+        const int16_t volante_lx = mapear_adc_para_eixo(leitura_volante);
         const uint8_t botoes = ler_botoes();
 
-        err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_rx, botoes);
+        err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_lx, botoes);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Falha ao enviar relatorio HID: %s", esp_err_to_name(err));
         }
@@ -379,9 +386,10 @@ void app_main(void)
 
     const gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << PINO_BOTAO_1) |
-                        (1ULL << PINO_BOTAO_2_BOOT) |
+                        (1ULL << PINO_BOTAO_2) |
                         (1ULL << PINO_BOTAO_3) |
-                        (1ULL << PINO_BOTAO_4_JOYSTICK),
+                        (1ULL << PINO_BOTAO_4_JOYSTICK) |
+                        (1ULL << PINO_BOTAO_5_BOOT),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -389,6 +397,7 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
     adc_iniciar();
+    ESP_LOGI(TAG, "Controles: L=GPIO1/Y=0 R=GPIO5/6 A/B/X=GPIO2/3/4 SW=GPIO7 BOOT=GPIO0");
 
     ESP_LOGI(TAG, "Inicializando BLE HID com NimBLE");
     ESP_ERROR_CHECK(esp_hid_gap_init(HIDD_BLE_MODE));

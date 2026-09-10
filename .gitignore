@@ -12,3 +12,6 @@ dependencies.lock
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Copias locais da flash (incluem dados de pareamento)
+backups/

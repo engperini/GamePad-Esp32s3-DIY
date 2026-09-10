@@ -3,14 +3,21 @@
 Firmware em ESP-IDF para transformar um **ESP32-S3 Super Mini** em um gamepad
 Bluetooth Low Energy. O projeto possui:
 
-- joystick analógico X/Y para navegar em menus;
-- potenciômetro Grove no eixo Rx para usar como volante;
-- três botões digitais, incluindo o BOOT da placa;
-- botão do próprio joystick como quarto botão;
+- joystick analógico direito (R), eixos Rx/Ry;
+- potenciômetro Grove no analógico esquerdo (L), eixo X para usar como volante;
+- três botões externos A/B/X nos GPIO2/3/4;
+- botão do próprio joystick como quarto botão e BOOT como quinto;
 - página web local para testar todos os eixos e botões.
 
 O projeto usa ESP-IDF puro, NimBLE e os arquivos auxiliares do exemplo oficial
 da Espressif. Não é necessário Arduino nem copiar arquivos de outros projetos.
+
+## Versão validada em 10/09/2026
+
+Firmware compilado com ESP-IDF 5.5 e gravado no ESP32-S3. O usuário confirmou
+o funcionamento do potenciômetro L, dos dois eixos do joystick R e dos cinco
+botões. A página de teste trata tanto eixos consecutivos quanto o mapeamento
+HID do Chromium/Windows, que reserva uma posição para Z antes de Rx/Ry.
 
 ## Atenção antes de ligar ou soldar
 
@@ -37,7 +44,7 @@ Todos os módulos e botões precisam compartilhar o mesmo **GND**.
 - 1 × ESP32-S3 Super Mini com Bluetooth;
 - 1 × joystick analógico de cinco pinos (`GND`, `5V`/VCC, `VRX`, `VRY`, `SW`);
 - 1 × Grove Rotary Angle Sensor;
-- até 2 × botões momentâneos normalmente abertos para GPIO2 e GPIO4;
+- 3 × botões momentâneos normalmente abertos para GPIO2, GPIO3 e GPIO4;
 - fios, solda e cabo USB de dados.
 
 Os botões externos são opcionais. O botão BOOT e o botão SW do joystick já
@@ -63,16 +70,16 @@ Mapa em texto para consulta rápida:
  não usado  RX  ○│                    │○ GND   terra comum
  Grove SIG   1  ○│                    │○ 3V3   Grove + joystick
  botão 1     2  ○│                    │○ 13    não usado
- evitar      3  ○│                    │○ 12    não usado
+ botão B     3  ○│                    │○ 12    não usado
  botão 3     4  ○│                    │○ 11    não usado
  VRX         5  ○│                    │○ 10    não usado
- VRY         6  ○│  BOOT = botão 2   │○ 9     não usado
+ VRY         6  ○│  BOOT = botão 5   │○ 9     não usado
  SW          7  ○│                    │○ 8     não usado
                 └─────── USB-C ──────┘
 ```
 
 GPIO0 não aparece na fileira lateral porque já está ligado ao botão **BOOT** da
-placa. GPIO3 é um pino de configuração de inicialização e foi deixado livre.
+placa. GPIO3 recebe o botão B nesta versão.
 
 ## Ligações completas
 
@@ -82,8 +89,8 @@ placa. GPIO3 é um pino de configuração de inicialização e foi deixado livre
 |---|---|---|
 | `GND` | `GND` | Terra comum |
 | `5V` ou `VCC` | **`3V3`** | Alimentação segura |
-| `VRX` | `GPIO5` / ADC1_CH4 | Eixo X do joystick |
-| `VRY` | `GPIO6` / ADC1_CH5 | Eixo Y do joystick |
+| `VRX` | `GPIO5` / ADC1_CH4 | Eixo Rx do analógico R |
+| `VRY` | `GPIO6` / ADC1_CH5 | Eixo Ry do analógico R |
 | `SW` | `GPIO7` | Botão 4 |
 
 O firmware aplica uma zona morta no centro do joystick para reduzir movimento
@@ -93,7 +100,7 @@ involuntário nos menus.
 
 | Cor do fio Grove | Ligar no ESP32-S3 | Função |
 |---|---|---|
-| Amarelo | `GPIO1` / ADC1_CH0 | Sinal analógico do volante Rx |
+| Amarelo | `GPIO1` / ADC1_CH0 | Sinal analógico do volante L (X) |
 | Branco | Não conectar | NC, sem uso |
 | Vermelho | `3V3` | Alimentação |
 | Preto | `GND` | Terra comum |
@@ -102,22 +109,24 @@ involuntário nos menus.
 
 | Botão no gamepad | Ligação | Observação |
 |---|---|---|
-| Botão 1 | botão externo entre `GPIO2` e `GND` | Opcional |
-| Botão 2 | botão `BOOT` da placa / GPIO0 | Já existe na placa |
-| Botão 3 | botão externo entre `GPIO4` e `GND` | Opcional |
+| A / Botão 1 | botão externo entre `GPIO2` e `GND` | Pull-up interno |
+| B / Botão 2 | botão externo entre `GPIO3` e `GND` | Pull-up interno |
+| Botão 5 | botão `BOOT` da placa / GPIO0 | Já existe na placa |
+| X / Botão 3 | botão externo entre `GPIO4` e `GND` | Pull-up interno |
 | Botão 4 | `SW` do joystick em `GPIO7` | Pressionar o joystick |
 
 Para os botões externos, use contatos momentâneos normalmente abertos:
 
 ```text
-GPIO2 ───── botão 1 ───── GND
-GPIO4 ───── botão 3 ───── GND
+GPIO2 ───── botão A ───── GND
+GPIO3 ───── botão B ───── GND
+GPIO4 ───── botão X ───── GND
 ```
 
 Não ligue 3V3 ou 5V aos botões. O firmware ativa os resistores pull-up internos:
 o botão solto fica em nível alto e o botão pressionado fecha o GPIO com GND.
 
-O BOOT funciona como botão 2 depois que o firmware inicia. Não mantenha BOOT
+O BOOT funciona como botão 5 depois que o firmware inicia. Não mantenha BOOT
 pressionado enquanto liga ou reinicia a placa, pois GPIO0 em nível baixo durante
 a inicialização coloca o ESP32-S3 no modo de gravação.
 
@@ -125,16 +134,23 @@ a inicialização coloca o ESP32-S3 no modo de gravação.
 
 | Controle físico | Entrada HID |
 |---|---|
-| Joystick esquerda/direita | Eixo X |
-| Joystick cima/baixo | Eixo Y |
-| Grove / volante | Eixo Rx |
-| Botão externo GPIO2 | Botão 1 |
-| BOOT | Botão 2 |
-| Botão externo GPIO4 | Botão 3 |
+| Joystick esquerda/direita | R horizontal / Rx |
+| Joystick cima/baixo | R vertical / Ry |
+| Grove / volante | L horizontal / X |
+| Sem sensor vertical esquerdo | L vertical / Y fixo em zero |
+| Botão externo GPIO2 | A / Botão 1 |
+| Botão externo GPIO3 | B / Botão 2 |
+| BOOT | Botão 5 |
+| Botão externo GPIO4 | X / Botão 3 |
 | Pressionar o joystick | Botão 4 |
 
-O relatório HID usa Report ID 1, três eixos assinados de 16 bits e quatro bits
-de botão. Uma atualização é enviada a cada 20 ms.
+O relatório HID usa Report ID 1, quatro eixos assinados de 16 bits e cinco bits
+de botão, mais três bits de padding (9 bytes: X, Y=0, Rx, Ry, botões). Uma atualização é enviada a cada 20 ms.
+
+A/B/X correspondem aos botões HID 1/2/3. Jogos podem exigir atribuir esses
+botões e os eixos nas configurações do controle; o dispositivo continua BLE HID.
+Após atualizar de uma versão com três eixos, remova o pareamento antigo e
+pareie novamente se o sistema conservar o descritor anterior.
 
 ## Instalação do ambiente
 
@@ -249,19 +265,19 @@ python -m http.server 8000 --directory server_teste
 ```
 
 Abra [http://localhost:8000](http://localhost:8000) no Chrome ou Edge e pressione
-um botão do gamepad. A página mostra joystick X/Y, volante Rx e os quatro botões.
+um botão do gamepad. A página mostra joystick R (Rx/Ry), volante L (X) e os cinco botões.
 
 Se houver outro joystick conectado, use o campo **Controle testado** para
 selecionar o GamePad Sophia. Dependendo do Windows e do navegador, ele pode
-aparecer como `Unknown Gamepad`; nesse caso, escolha o controle que possui três
-eixos e quatro botões.
+aparecer como `Unknown Gamepad`; nesse caso, escolha o controle que possui quatro
+eixos e cinco botões.
 
 ## Calibração
 
 Os valores abaixo ficam no início de `main/esp_hid_device_main.c`:
 
 - `JOYSTICK_HABILITADO`: use `0` enquanto VRX/VRY estiverem desconectados para
-  manter X/Y em zero; troque para `1` depois de instalar o joystick;
+  manter Rx/Ry em zero; o padrão atual é `1` (joystick conectado);
 - `ADC_MIN` e `ADC_MAX`: limites do Grove/volante;
 - `JOYSTICK_CENTRO`: centro nominal do joystick;
 - `JOYSTICK_ZONA_MORTA`: região central ignorada para evitar movimento sozinho.

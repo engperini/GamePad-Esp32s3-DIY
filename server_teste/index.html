@@ -162,32 +162,36 @@
       </select>
     </div>
     <div class="linha">
-      <span class="rotulo">Joystick X</span>
+      <span class="rotulo">Analógico R — horizontal</span>
       <span class="valor destaque" id="valorJoystickX">—</span>
     </div>
     <div class="linha">
-      <span class="rotulo">Joystick Y</span>
+      <span class="rotulo">Analógico R — vertical</span>
       <span class="valor destaque" id="valorJoystickY">—</span>
     </div>
     <div class="linha">
-      <span class="rotulo">Volante Rx</span>
+      <span class="rotulo">Analógico L — volante</span>
       <span class="valor destaque" id="valorVolante">—</span>
     </div>
     <div class="linha">
-      <span class="rotulo">Botão 1 — GPIO2</span>
+      <span class="rotulo">A — GPIO2</span>
       <span class="valor" id="valorBotao1">solto <span class="start-led" id="ledBotao1"></span></span>
     </div>
     <div class="linha">
-      <span class="rotulo">Botão 2 — BOOT</span>
+      <span class="rotulo">B — GPIO3</span>
       <span class="valor" id="valorBotao2">solto <span class="start-led" id="ledBotao2"></span></span>
     </div>
     <div class="linha">
-      <span class="rotulo">Botão 3 — GPIO4</span>
+      <span class="rotulo">X — GPIO4</span>
       <span class="valor" id="valorBotao3">solto <span class="start-led" id="ledBotao3"></span></span>
     </div>
     <div class="linha">
       <span class="rotulo">Botão 4 — joystick SW</span>
       <span class="valor" id="valorBotao4">solto <span class="start-led" id="ledBotao4"></span></span>
+    </div>
+    <div class="linha">
+      <span class="rotulo">Botão 5 — BOOT</span>
+      <span class="valor" id="valorBotao5">solto <span class="start-led" id="ledBotao5"></span></span>
     </div>
     <div class="linha">
       <span class="rotulo">Nome do dispositivo</span>
@@ -200,6 +204,7 @@
     navegadores só ativam a leitura depois da primeira interação com o gamepad.
   </p>
 
+  <p class="ajuda" id="diagnosticoEixos">Aguardando leitura dos eixos.</p>
 <script>
   const statusEl = document.getElementById('status');
   const seletorGamepad = document.getElementById('seletorGamepad');
@@ -207,7 +212,7 @@
   const valorJoystickX = document.getElementById('valorJoystickX');
   const valorJoystickY = document.getElementById('valorJoystickY');
   const valorVolante = document.getElementById('valorVolante');
-  const indicadoresBotoes = [1, 2, 3, 4].map(numero => ({
+  const indicadoresBotoes = [1, 2, 3, 4, 5].map(numero => ({
     valor: document.getElementById(`valorBotao${numero}`),
     led: document.getElementById(`ledBotao${numero}`),
   }));
@@ -251,7 +256,7 @@
         const sophia = gamepads.find(g =>
           /GamePad Sophia|Volante DIY|NimBLE|Vendor: 16c0.*Product: 05df/i.test(g.id)) ||
           gamepads.find(g =>
-            (g.axes.length === 3 && g.buttons.length === 4) ||
+            ((g.axes.length === 4 || g.axes.length === 5) && g.buttons.length === 5) ||
             (g.axes.length === 1 && g.buttons.length === 3));
         if (aindaExiste && seletorGamepad.dataset.escolhaManual === 'true') {
           seletorGamepad.value = selecaoAnterior;
@@ -271,14 +276,20 @@
       valorNome.textContent = gp.id || '—';
 
       // A Gamepad API entrega cada eixo normalizado de -1.0 a 1.0.
-      const joystickX = gp.axes[0] ?? 0;
-      const joystickY = gp.axes[1] ?? 0;
-      const volante = gp.axes[2] ?? 0;
+      // Chromium/Windows RawInput indexes HID usages from X (0x30):
+      // X=0, Y=1, Z=2 (unused), Rx=3, Ry=4. Other backends compact axes.
+      const indiceR = gp.mapping !== 'standard' && gp.axes.length >= 5 ? 3 : 2;
+      const joystickX = gp.axes[indiceR] ?? 0;
+      const joystickY = gp.axes[indiceR + 1] ?? 0;
+      document.getElementById('diagnosticoEixos').textContent =
+        `R horizontal: eixo ${indiceR}; R vertical: eixo ${indiceR + 1}. ` +
+        Array.from(gp.axes, (v, i) => `[${i}] ${v.toFixed(3)}`).join(' | ');
+      const volante = gp.axes[0] ?? 0;
       valorJoystickX.textContent = joystickX.toFixed(3);
       valorJoystickY.textContent = joystickY.toFixed(3);
       valorVolante.textContent = volante.toFixed(3);
 
-      // Gira o SVG do volante: eixo Rx (-1..1) -> graus (-150..150).
+      // Gira o SVG do volante: eixo X / L (-1..1) -> graus (-150..150).
       anguloAtual = volante * 150;
       volanteSvg.style.transform = `rotate(${anguloAtual}deg)`;
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
   <title id="title">Mapa de pinos do GamePad Sophia no ESP32-S3 Super Mini</title>
-  <desc id="desc">Vista superior da placa com USB-C para baixo, destacando GPIO1, GPIO2, GPIO4, GPIO5, GPIO6, GPIO7, 3V3, GND e o botão BOOT.</desc>
+  <desc id="desc">Vista superior da placa com USB-C para baixo, destacando GPIO1, GPIO2, GPIO3, GPIO4, GPIO5, GPIO6, GPIO7, 3V3, GND e o botão BOOT.</desc>
   <style>
     text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #18212b; }
     .title { font-size: 34px; font-weight: 700; }
@@ -48,15 +48,15 @@
 
   <circle cx="430" cy="495" r="13" class="pad button"/>
   <text x="395" y="501" text-anchor="end" class="pin">GPIO2</text>
-  <text x="245" y="501" text-anchor="end" class="function">botão externo 1</text>
+  <text x="245" y="501" text-anchor="end" class="function">botão A / 1</text>
 
-  <circle cx="430" cy="545" r="13" class="pad unused"/>
+  <circle cx="430" cy="545" r="13" class="pad button"/>
   <text x="395" y="551" text-anchor="end" class="pin">GPIO3</text>
-  <text x="245" y="551" text-anchor="end" class="function">não usar neste projeto</text>
+  <text x="245" y="551" text-anchor="end" class="function">botão B / 2</text>
 
   <circle cx="430" cy="595" r="13" class="pad button"/>
   <text x="395" y="601" text-anchor="end" class="pin">GPIO4</text>
-  <text x="245" y="601" text-anchor="end" class="function">botão externo 3</text>
+  <text x="245" y="601" text-anchor="end" class="function">botão X / 3</text>
 
   <circle cx="430" cy="645" r="13" class="pad joystick"/>
   <text x="395" y="651" text-anchor="end" class="pin">GPIO5</text>
@@ -98,7 +98,7 @@
 
   <rect x="470" y="670" width="110" height="42" rx="9" class="button"/>
   <text x="525" y="696" text-anchor="middle" class="inside">BOOT</text>
-  <text x="590" y="693" class="inside">botão 2 / GPIO0</text>
+  <text x="590" y="693" class="inside">botão 5 / GPIO0</text>
 
   <circle cx="185" cy="855" r="11" class="sensor"/><text x="205" y="861" class="legend">Volante Grove</text>
   <circle cx="390" cy="855" r="11" class="joystick"/><text x="410" y="861" class="legend">Joystick</text>
