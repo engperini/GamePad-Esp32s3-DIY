@@ -1,0 +1,41 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const elements = new Map();
+const drawing = new Proxy({}, {get:(_,key)=>key==='createLinearGradient'?()=>({addColorStop(){}}):()=>{},set:()=>true});
+const get=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',style:{},classList:{toggle(){}},replaceChildren(){},add(){},getContext:()=>drawing,click(){this.onclick();}});return elements.get(id);};
+let pads=[{index:0,id:'GamePad Sophia',mapping:'',axes:[0,0,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))}];
+const context={document:{getElementById:get,addEventListener(){},querySelectorAll:()=>[]},window:{addEventListener(){}},navigator:{getGamepads:()=>pads},localStorage:{getItem:()=>null,setItem(){}},Option:function(){},innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>0},requestAnimationFrame(){},console};
+vm.createContext(context);vm.runInContext(fs.readFileSync('server_teste/jogo.js','utf8'),context);
+const run=s=>vm.runInContext(s,context);
+run('start()');
+for(const expected of [1,2,3,1]){pads[0].buttons[0].pressed=true;run('input(1000)');assert.equal(run('state.gear'),expected);run('input(1020)');assert.equal(run('state.gear'),expected,'holding must not repeat');pads[0].buttons[0].pressed=false;run('input(1040)');}
+pads[0].axes=[.6,0,0,.8,-.4];const controls=run('input(2000)');assert(controls.cx>0&&controls.cy<0);assert(run('state.steer')<0,'inversion');
+const steering=run('state.steer');pads[0].axes[3]=-.9;run('input(2020)');assert.equal(run('state.steer'),steering,'camera must not steer');
+run('state.speed=80;state.last=2000');pads[0].buttons[1].pressed=true;run('frame(2050)');assert(run('state.speed')<80,'brake reduces speed');assert.equal(run('state.gear'),1);
+pads[0].buttons[2].pressed=true;run('input(2100)');assert.equal(run('state.running'),false);const distance=run('state.z');run('frame(2150)');assert.equal(run('state.z'),distance,'pause freezes physics');
+pads[0].axes[4]=.9;run('input(3000)');assert.equal(run('state.selection'),1,'R navigates menu');pads[0].buttons[0].pressed=true;run('input(3020)');assert.equal(run('state.invert'),false,'A activates selected menu item');
+run('start()');pads=[];run('input(4000)');assert.equal(run('state.running'),false,'disconnect pauses');
+assert.deepEqual(Array.from(run("rightIndices({mapping:'standard',axes:[0,0,0,0,0]})")),[2,3]);
+// Car contact point must share the road's projection, including camera motion.
+for(const z of [0,500,1700,5000])for(const yaw of [-.8,0,.8])for(const pitch of [-.8,0,.8]){
+ run(`Object.assign(state,{z:${z},x:0,yaw:${yaw},pitch:${pitch}})`);
+ const road=run('projectRoad(state.z)'),car=run('carPosition()');
+ assert(Math.abs(car.x-road.x)<1e-8,'car centered on road at its own depth');
+ assert.equal(car.y,road.y,'car and road share camera pitch');
+ const ahead=run('projectRoad(state.z+.01)');
+ assert(Math.abs(ahead.x-road.x)<.001,'road tangent aligned with car');
+}
+run('Object.assign(state,{x:120,steer:1});reset()');
+assert.equal(run('state.x'),0);assert.equal(run('state.steer'),0);
+run('state.x=150');assert(run('carPosition().x')>run('projectRoad(state.z).x'),'steering offset remains visible');
+console.log('PASS: controls, car/road alignment through curves, camera yaw/pitch and reset.');
+
+pads=[{index:0,id:'GamePad Sophia',mapping:'',axes:[.3,0,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))}];
+run('start();state.invert=false;state.sensitivity=.6;input(5000)');
+const gentle=run('state.steer');run('state.sensitivity=1.8;input(5020)');
+assert(run('state.steer')>gentle*2.9,'sensitivity increases steering outside deadzone');
+pads[0].axes[0]=.02;run('input(5040)');assert.equal(run('state.steer'),0,'sensitivity preserves deadzone');
+run('reset();state.speed=55;state.gear=1;state.last=6000;frame(6050)');
+assert(Math.abs(run('state.z')-55/3.6*.05*24)<1e-6,'faster world motion');
+console.log('PASS: sensitivity independent of deadzone, faster world motion.');

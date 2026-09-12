@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Órbita — pista de provas Sophia</title>
+<link rel="stylesheet" href="jogo.css">
+<body>
+<canvas id="world" aria-label="Pista de condução Órbita"></canvas>
+<header><a href="index.html" class="brand">◎ ÓRBITA <small>SOPHIA / PISTA DE PROVAS</small></a><div id="connection">TECLADO DISPONÍVEL</div><button id="pause">Pausar · X</button></header>
+<div class="location">01 / SALINAS NOTURNAS <span>UM CIRCUITO PARA SENTIR CADA MOVIMENTO.</span></div>
+<aside class="telemetry"><div class="eyebrow">SINAL AO VIVO</div><label>Volante L <b id="steerValue">0.00</b></label><div class="meter"><i id="steerMeter"></i></div><label>Câmera R <b id="cameraValue">0.00 / 0.00</b></label><div id="buttonSignals">A ○ &nbsp; B ○ &nbsp; X ○</div><p id="mapping">Conecte o gamepad e pressione um botão.</p><select id="gamepad" aria-label="Controle utilizado"><option value="">Seleção automática</option></select></aside>
+<footer><div class="speed"><strong id="speed">000</strong><span>KM/H</span></div><div class="gear"><span>VELOCIDADE ALVO</span><b id="gear">NEUTRO</b><div class="steps"><i></i><i></i><i></i></div></div><div class="trip"><span>DISTÂNCIA</span><b id="distance">0.00 km</b></div><div class="hints"><span><kbd>A</kbd> 1 → 2 → 3 → 1</span><span><kbd>B</kbd> Segurar para frear</span><span><kbd>R</kbd> Câmera</span></div></footer>
+<div id="toast" role="status"></div>
+<div class="overlay" id="overlay"><section class="menu"><div class="eyebrow">GAMEPAD SOPHIA / EXPERIÊNCIA 001</div><h1 id="menuTitle">Sinta a curva.<br><em>Encontre o controle.</em></h1><p id="menuText">Cruze uma paisagem de sal e luz. Teste o volante, explore a câmera e encontre o ritmo nas três velocidades.</p><div class="menuActions"><button id="start" class="primary">Entrar na pista <span>↗</span></button><button id="invert">Volante invertido: SIM</button><button id="reset">Reiniciar percurso</button><button id="sensitivity">Sensibilidade: 1.0× · A para alternar</button></div><div class="setup"><label for="deadzone">Zona morta do volante <output id="deadValue">4%</output></label><input id="deadzone" type="range" min="0" max="20" value="4"><p>Zona morta ignora o pequeno movimento central. Sensibilidade muda a força da direção após esse centro.</p><p>Inversão aplicada só neste jogo. Vire fisicamente à direita e confira se o carro vai à direita.</p></div><div class="menuHelp">GAMEPAD: R ↑↓ navega · A confirma · X pausa/retoma<br>TECLADO: ←→ dirige · W acelera por clique · espaço freia<br>I J K L câmera · Esc pausa · ↑↓ e Enter no menu</div></section></div>
+<script src="jogo.js"></script>
+</body></html>
