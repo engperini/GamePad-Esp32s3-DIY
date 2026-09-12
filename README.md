@@ -364,3 +364,16 @@ LED Bluetooth solicitado: piscar lento conectado e rápido desconectado.
 Implementação pendente da identificação do LED/pino da placa exata. Algumas
 ESP32-S3 Super Mini têm LED azul de carga, sem controle pelo firmware;
 não atribuir um GPIO sem confirmar o circuito.
+
+
+## Órbita Kids
+
+O jogo local agora tem duas fases (Jardim das Nuvens e Estrada das Estrelas),
+curvas suaves, tráfego, cones/bolas, estrelas e chegada. Sair da pista não prende
+o carro: o acostamento reduz o ritmo e auxilia o retorno. Configurações de controle
+ficam em menu próprio. Há teclado, gamepad e botões de toque, com sons opcionais.
+
+Uso: [server_teste/JOGO.md](server_teste/JOGO.md).
+Proposta de console independente: [docs/CONSOLE-WIFI.md](docs/CONSOLE-WIFI.md).
+Servidor/controles por Wi-Fi no ESP32 ainda não implementados; o firmware BLE
+validado não foi alterado nesta etapa. Android/TV requerem validação nos aparelhos.

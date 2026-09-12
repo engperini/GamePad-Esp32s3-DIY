@@ -1,4 +1,4 @@
-# Órbita — pista de provas Sophia
+# Órbita Kids — uma aventura Sophia
 
 Execute no PowerShell:
 
@@ -6,17 +6,42 @@ Execute no PowerShell:
 python -m http.server 8000 --bind 127.0.0.1 --directory "C:\Users\engpe\Documents\volante-diy-firmware\server_teste"
 ```
 
-Abra http://127.0.0.1:8000/jogo.html no Chrome ou Edge. Conecte o controle no Bluetooth do Windows e pressione um botão. Se necessário, escolha o dispositivo no seletor. O jogo funciona offline, sem instalar bibliotecas.
+Abra http://127.0.0.1:8000/jogo.html no Chrome ou Edge. O jogo usa somente
+jogo.html, jogo.css e jogo.js. Gráficos e sons são gerados localmente, sem CDN,
+fontes externas, cadastro ou internet depois de obter esses arquivos.
+
+## Como brincar
+
+Escolha Jardim das Nuvens (dia, balões e árvores) ou Estrada das Estrelas (noite).
+Colete estrelas e desvie dos carros, cones e bolas. Cada fase termina após 1 km
+simulado, mostra estrelas/desvios e oferece o outro mundo. Não há game over.
+Curvas são suaves. O acostamento limita o ritmo e ajuda o carro a voltar mesmo
+parado; colisões causam apenas desaceleração breve e proteção de 1,5 segundo.
 
 - L: direção.
-- R: câmera horizontal/vertical durante a condução; cima/baixo seleciona opções no menu.
-- A / GPIO2: cada clique alterna 55, 95, 140 e novamente 55 km/h. No menu, confirma.
-- B / GPIO3: freia enquanto pressionado. Ao soltar, volta gradualmente à velocidade selecionada.
-- X / GPIO4: pausa e retoma.
-- Teclado: setas esquerda/direita dirigem, W alterna velocidades, espaço freia, I/J/K/L movem a câmera, Esc pausa, cima/baixo e Enter operam o menu.
+- R: câmera na pista; cima/baixo navega nos menus.
+- A / GPIO2: cliques alternam 55, 95, 140, 55 km/h; no menu confirma.
+- B / GPIO3: segure para frear; no menu de configurações volta.
+- X / GPIO4: pausa/retoma ou volta das configurações.
+- Teclado: esquerda/direita dirige, W alterna ritmo, espaço freia, I/J/K/L câmera,
+  Esc pausa, cima/baixo e Enter navegam.
+- Tela sensível ao toque: esquerda/direita, acelerar por clique e freio segurado.
 
-O menu permite inverter a direção e ajustar a zona morta; essas preferências ficam salvas neste navegador. A inversão começa ligada para testar a direção relatada pelo usuário. Ela afeta apenas este jogo, não o firmware nem outros jogos. Perda de foco ou desconexão do controle pausa a experiência.
+Configurações reúne inversão, sensibilidade, zona morta, som opcional, tela cheia
+e diagnóstico do gamepad. Preferências são salvas no navegador. Com o firmware
+invertido validado, use inversão NÃO. A preferência antiga é preservada se já salva.
+O som pode exigir um toque/clique na página por política do navegador.
+Perda de foco ou desconexão do controle pausa a aventura.
 
-HTML e CSS compõem a interface; JavaScript desenha a pista em Canvas 2D com perspectiva e lê a Gamepad API. As velocidades são simuladas. Para encerrar o servidor, use Ctrl+C no terminal.
+## Portabilidade
 
-Sensibilidade no menu: 0,6× (suave), 1,0× (normal), 1,4× e 1,8× (mais rápida), alternada com A. A zona morta continua independente. A pista tem movimento ampliado, aceleração mais rápida e rastros periféricos proporcionais à velocidade.
+O pacote é web estático, não um APK/PWA instalado. Android e TVs ainda precisam
+de validação no aparelho real. Gamepad Bluetooth exige navegador/host compatíveis
+e contexto seguro (HTTPS ou localhost). O endereço 127.0.0.1 é do aparelho que
+abre o navegador: não acessa o PC quando digitado no celular.
+
+Para levar a outro servidor, copie os três arquivos juntos e abra jogo.html.
+Para um console no ESP32, veja ../docs/CONSOLE-WIFI.md. O servidor e o transporte
+WebSocket no firmware ainda não estão implementados nesta versão.
+
+Verificações: node tests/check_game.cjs e node tests/check_page.cjs, na raiz.
