@@ -100,23 +100,27 @@ for(const mapping of ['', 'standard'])for(const count of [5,17]){
  run('input(100000);start();held.clear();state.sound=true;notes=[];lastHorn=-Infinity');
  pads[0].buttons[1].pressed=true;
  assert.equal(run('input(100020).brake'),false,'B horn never brakes');
- assert.deepEqual(Array.from(run('notes')),[349,440],'horn has its own sound');
+ assert.deepEqual(Array.from(run('notes')),[1046,1046],'horn has its own sound');
  pads[0].buttons[1].pressed=false;pads[0].buttons[mapping==='standard'&&count>=12?11:3].pressed=true;
  assert.equal(run('input(100040).brake'),true,'right stick click brakes');
 }
 for(const stage of ['day','night','coast','hills']){
  run(`prepareStage('${stage}');draw(1000)`);
  assert(run('stageLength')>=60000,'longer tracks');
+ const layout=Array.from(run('objects')),hazards=layout.filter(o=>['car','cone','barrier'].includes(o.type)),treasures=layout.filter(o=>!hazards.includes(o));
+ assert(treasures.length>=hazards.length*4,'four treasures per obstacle');
+ for(const treasure of treasures)for(const obstacle of hazards)assert(Math.abs(treasure.z-obstacle.z)>=1400,'clear space around obstacles');
+ assert(Math.abs(run('projectRoad(2000).x-projectRoad(0).x'))>45,'bend visible from the start');
  for(let z=0;z<run('stageLength');z+=500){
-  assert(Math.abs(run(`roadSlope(${z})`))<.14,'gentle bends');
+  assert(Math.abs(run(`roadSlope(${z})`))<.86,'bounded bends');
   assert(Math.abs(run(`(roadCenter(${z}+.01)-roadCenter(${z}-.01))/.02-roadSlope(${z})`))<1e-6,'camera tangent matches track');
  }
  run('state.completed=true;start()');
  assert.equal(run('state.stage'),({day:'night',night:'coast',coast:'hills',hills:'day'})[stage]);
 }
 // A preview is time-independent; recoloring actually changes the drawn geometry.
-let renders=0;const drawCar=context.window.SophiaCars.draw;
-context.window.SophiaCars.draw=(...args)=>{renders++;return drawCar(...args);};
+let renders=0;const drawCar=context.window.SophiaCars.side;
+context.window.SophiaCars.side=(...args)=>{renders++;return drawCar(...args);};
 run("showGarage();previewKey='';drawGaragePreview(0);drawGaragePreview(5000)");assert.equal(renders,1);
 run("$('colorYellow').click();drawGaragePreview(5100)");assert.equal(renders,2);
 const source=fs.readFileSync('server_teste/jogo.js','utf8');

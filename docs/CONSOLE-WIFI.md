@@ -178,3 +178,15 @@ servidos pela placa foram comparados byte a byte com os arquivos ativos.
 Imagem de 1.112.128 bytes, com 43% da partição OTA livre. Testes de física,
 controles, som, quatro pistas, garagem estática, transporte, HID e partições
 passaram; garagem e costa revisadas no navegador.
+
+## Atualização 1.3.1 — vista lateral e percurso mais livre
+
+Garagem com desenho lateral 2D estático, curvas com maior amplitude e visíveis
+desde a largada, inclinação do carro reduzida de 18 para cerca de 4 graus.
+Oito colecionáveis por obstáculo, com separação longitudinal mínima de 1.500
+unidades; carros-obstáculo ficam parados para não invadir os grupos de tesouros.
+Buzina com dois bipes de 1.046 Hz, separados por silêncio.
+
+Testes do jogo, transporte e partições passaram; garagem e curva inicial
+conferidas no navegador. OTA aplicada em 192.168.0.24, de ota_0 para ota_1;
+status confirmou 1.3.1 e arquivos servidos idênticos ao código ativo.

@@ -17,7 +17,10 @@ Golfinhos (3,5 km) ou Vale das Araucárias (3,25 km). Os cenários têm casas e 
 prédios iluminados, mar e palmeiras, ou pinheiros e pedras. Colete tesouros e desvie
 dos carros, cones e barreiras. Ao terminar, o jogo oferece o próximo mundo.
 Não há game over.
-Curvas são suaves. O acostamento limita o ritmo e ajuda o carro a voltar mesmo
+Curvas são visíveis desde o início, com transições suaves. Há oito tesouros por
+obstáculo, em grupos separados por trechos livres. Os carros na pista são
+obstáculos parados para preservar essa separação. A buzina faz dois bipes agudos.
+A inclinação visual máxima ao virar é de cerca de 4 graus. O acostamento limita o ritmo e ajuda o carro a voltar mesmo
 partindo do repouso ao acelerar; parado não há deslocamento lateral. Colisões
 retiram 75% da velocidade, adiam a aceleração em 0,8 segundo e dão proteção
 de 1,5 segundo. A direção responde por ângulo progressivo, proporcional ao
@@ -45,8 +48,8 @@ Perda de foco ou desconexão do controle pausa a aventura.
 Na tela inicial, **Personalizar carro** abre a garagem. Há quatro desenhos vetoriais:
 Renegade, BYD Song Pro, Foguete e Buggy. O Renegade começa branco e o Song Pro,
 cinza; qualquer modelo aceita branco, cinza, rosa, azul, verde ou amarelo. A prévia
-fica estática em três quartos, mostrando volume, vidros, rodas, lanternas e pintura.
-A carroceria usa polígonos projetados do Canvas, sem imagens ou biblioteca 3D. A escolha fica salva neste navegador
+fica estática em vista lateral 2D, mostrando vidros, rodas, lanterna traseira,
+farol dianteiro e pintura. O desenho usa Canvas sem imagens externas. A escolha fica salva neste navegador
 e aparece no carro dirigido. O menu funciona por toque/mouse, teclado e gamepad.
 
 Além das estrelas, a pista alterna corações, doces e cristais. Todos são colecionáveis,

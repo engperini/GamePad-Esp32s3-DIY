@@ -6,10 +6,10 @@ const state={running:false,started:false,z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,st
 try{const saved=JSON.parse(localStorage.getItem('orbita-settings')||'{}');if(saved.soundRevision===2&&typeof saved.sound==='boolean')state.sound=saved.sound;for(const key of ['invert'])if(typeof saved[key]==='boolean')state[key]=saved[key];if(Number.isFinite(saved.deadzone))state.deadzone=Math.max(0,Math.min(.2,saved.deadzone));if(Number.isFinite(saved.sensitivity))state.sensitivity=Math.max(.6,Math.min(1.8,saved.sensitivity));if(['renegade','song','sport','buggy'].includes(saved.carModel))state.carModel=saved.carModel;if(/^#[0-9a-f]{6}$/i.test(saved.carColor||''))state.carColor=saved.carColor;}catch{}
 const targets=[0,55,95,140];
 const tracks={
- day:{name:'Jardim das Nuvens',length:60000,curve:[340,5400,180,3100],sky:['#73c8ea','#bdeaf1','#fff1ca'],ground:['#91ce88','#8bc981'],road:['#718b9a','#758f9e'],edge:['#fff2d0','#f4b997']},
- night:{name:'Estrada das Estrelas',length:72000,curve:[420,6100,150,3500],sky:['#071320','#243248','#807887'],ground:['#293f48','#2c424b'],road:['#172b34','#192e37'],edge:['#789080','#4b6565']},
- coast:{name:'Costa dos Golfinhos',length:84000,curve:[430,5000,160,3700],sky:['#3baedc','#9ae4ed','#ffecb8'],ground:['#eddaa4','#e5d19a'],road:['#778991','#7c8e96'],edge:['#fff6dd','#e8b295']},
- hills:{name:'Vale das Araucárias',length:78000,curve:[500,6000,180,4000],sky:['#7eafd2','#cce2e5','#fce7be'],ground:['#7ca579','#769f72'],road:['#6e7e85','#73838a'],edge:['#f3e6c7','#bdaf95']}
+ day:{name:'Jardim das Nuvens',length:60000,curve:[1250,1900,280,3300],sky:['#73c8ea','#bdeaf1','#fff1ca'],ground:['#91ce88','#8bc981'],road:['#718b9a','#758f9e'],edge:['#fff2d0','#f4b997']},
+ night:{name:'Estrada das Estrelas',length:72000,curve:[1450,2100,330,3500],sky:['#071320','#243248','#807887'],ground:['#293f48','#2c424b'],road:['#172b34','#192e37'],edge:['#789080','#4b6565']},
+ coast:{name:'Costa dos Golfinhos',length:84000,curve:[1500,2000,260,3100],sky:['#3baedc','#9ae4ed','#ffecb8'],ground:['#eddaa4','#e5d19a'],road:['#778991','#7c8e96'],edge:['#fff6dd','#e8b295']},
+ hills:{name:'Vale das Araucárias',length:78000,curve:[1600,2200,350,3400],sky:['#7eafd2','#cce2e5','#fce7be'],ground:['#7ca579','#769f72'],road:['#6e7e85','#73838a'],edge:['#f3e6c7','#bdaf95']}
 };
 const trackIds=Object.keys(tracks);let stageLength=tracks.day.length;
 let objects=[];
@@ -21,7 +21,7 @@ function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!
 function showSettings(){state.screen='settings';state.selection=0;menu(true);}
 function showGarage(){state.screen='garage';state.selection=0;menu(true);}
 function back(){state.screen='main';state.selection=0;menu(true);}
-function prepareStage(stage){state.stage=tracks[stage]?stage:'day';const track=tracks[state.stage];stageLength=track.length;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];const treasures=['star','heart','candy','gem'];for(let i=0,z=2200;z<stageLength-1700;i++,z+=1050){const lane=[-320,0,320][(i*7+2)%3];objects.push({z,x:lane,type:i%3===0?'car':i%3===1?'cone':'barrier',done:false});objects.push({z:z+490,x:[-320,0,320][i%3],type:treasures[i%treasures.length],done:false});}document.body.classList.toggle('day-mode',state.stage!=='night');for(const id of trackIds)$(id).classList.toggle('chosen',id===state.stage);$('stageName').textContent='0'+(trackIds.indexOf(state.stage)+1)+' · '+track.name;}
+function prepareStage(stage){state.stage=tracks[stage]?stage:'day';const track=tracks[state.stage];stageLength=track.length;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];const treasures=['star','heart','candy','gem'];for(let i=0,z=1800;z<stageLength-5000;i++,z+=5500){for(let j=0;j<8;j++)objects.push({z:z+j*350,x:[-320,0,320][(i+Math.floor(j/2))%3],type:treasures[(i+j)%4],done:false});objects.push({z:z+4000,x:[-320,0,320][(i+2)%3],type:['car','cone','barrier'][i%3],done:false});}document.body.classList.toggle('day-mode',state.stage!=='night');for(const id of trackIds)$(id).classList.toggle('chosen',id===state.stage);$('stageName').textContent='0'+(trackIds.indexOf(state.stage)+1)+' · '+track.name;}
 function start(){unlockAudio();if(state.completed)prepareStage(trackIds[(trackIds.indexOf(state.stage)+1)%trackIds.length]);state.started=true;state.screen='main';menu(false);}
 function reset(){prepareStage(state.stage);start();notify('UMA NOVA AVENTURA!');}
 function notify(text){$('toast').textContent=text;state.toastUntil=performance.now()+2200;}
@@ -87,7 +87,7 @@ function input(now){
 function roadCenter(z){const [a,l,b,m]=tracks[state.stage].curve;return a*(1-Math.cos(z/l))+b*(1-Math.cos(z/m));}
 function roadSlope(z){const [a,l,b,m]=tracks[state.stage].curve;return a/l*Math.sin(z/l)+b/m*Math.sin(z/m);}
 let lastHorn=-Infinity;
-function honk(){if(performance.now()-lastHorn<250)return;lastHorn=performance.now();notify('BIP BIP!');unlockAudio();if(!state.sound||audioContext?.state!=='running')return;const t=audioContext.currentTime;for(const f of [349,440]){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(f,t);gain.gain.setValueAtTime(.001,t);gain.gain.exponentialRampToValueAtTime(.025,t+.015);gain.gain.exponentialRampToValueAtTime(.001,t+.3);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.32);}}
+function honk(){if(performance.now()-lastHorn<450)return;lastHorn=performance.now();notify('BIP BIP!');unlockAudio();if(!state.sound||audioContext?.state!=='running')return;const start=audioContext.currentTime;for(let i=0;i<2;i++){const t=start+i*.21,f=1046;const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(f,t);gain.gain.setValueAtTime(.001,t);gain.gain.exponentialRampToValueAtTime(.09,t+.012);gain.gain.exponentialRampToValueAtTime(.001,t+.13);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.15);}}
 const cameraDistance=240;
 function projectRoad(z){
  const depth=z-(state.z-cameraDistance),k=1/(depth*.002+1);
@@ -109,7 +109,7 @@ function updateGarage(){
  for(const [id,color] of Object.entries(colorButtons))$(id).classList.toggle('chosen',color===state.carColor);
 }
 let previewKey='';
-function drawGaragePreview(){const c=$('carPreview');if(state.screen!=='garage'||c.hidden)return;const key=state.carModel+state.carColor;if(key===previewKey)return;previewKey=key;const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.save();g.translate(c.width*.51,c.height*.83);window.SophiaCars.draw(g,65,state.carModel,state.carColor,.58,true);g.restore();g.fillStyle='#dfffc8';g.font='700 13px system-ui';g.textAlign='center';g.fillText(({renegade:'RENEGADE',song:'BYD SONG PRO',sport:'FOGUETE',buggy:'BUGGY'})[state.carModel],c.width/2,c.height-12);}
+function drawGaragePreview(){const c=$('carPreview');if(state.screen!=='garage'||c.hidden)return;const key=state.carModel+state.carColor;if(key===previewKey)return;previewKey=key;const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.save();g.translate(c.width*.5,c.height*.74);window.SophiaCars.side(g,130,state.carModel,state.carColor);g.restore();g.fillStyle='#dfffc8';g.font='700 13px system-ui';g.textAlign='center';g.fillText(({renegade:'RENEGADE',song:'BYD SONG PRO',sport:'FOGUETE',buggy:'BUGGY'})[state.carModel],c.width/2,c.height-12);}
 function draw(now){
  const day=state.stage!=='night',track=tracks[state.stage];
  const horizon=h*(.43+state.pitch*.12),shift=state.yaw*w*.2;
@@ -131,7 +131,7 @@ function draw(now){
  if(!day&&Math.floor(z1/35)%7===0){for(const side of [-1,1]){const px=a.x+side*a.width*.65;ctx.fillStyle='#769888';ctx.fillRect(px,a.y-65*a.k,3*a.k,65*a.k);ctx.fillStyle='#bbfa74';ctx.fillRect(px-4*a.k,a.y-65*a.k,11*a.k,5*a.k);}}
  }
  // The chosen car stays in the driver's reference frame; R only changes the view.
- const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.35);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;paintPlayerCar(ctx,sz,state.carModel,state.carColor,state.turnAngle);ctx.restore();
+ const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.08);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;paintPlayerCar(ctx,sz,state.carModel,state.carColor,state.turnAngle);ctx.restore();
  drawSpeedFlow();
  drawGaragePreview(now);
  if(Math.abs(state.x)>570){ctx.fillStyle='#ffb36a';ctx.font='11px Segoe UI';ctx.textAlign='center';ctx.fillText('Tudo bem! Vamos voltar para a pista ☺',w/2,h*.63);}
@@ -242,7 +242,7 @@ function step(dt,controls){
  const previousZ=state.z;state.z+=advance;
  for(const object of objects){
   if(object.done)continue;
-  const oldZ=object.z;if(object.type==='car')object.z+=110*dt;
+  const oldZ=object.z;
   if(oldZ>=previousZ-65&&object.z<=state.z+65){
    const treasure=['star','heart','candy','gem'].includes(object.type),near=Math.abs(state.x-object.x)<(treasure?115:135);
    if(near){object.done=true;if(treasure){state.stars++;notify(({star:'★ Estrela brilhante!',heart:'♥ Coração feliz!',candy:'🍬 Doce surpresa!',gem:'◆ Cristal mágico!'})[object.type]);chime(true);}else if(!state.shield){state.bumps++;state.shield=1.5;state.impact=.8;state.speed*=.25;notify('Opa! Tudo bem, vamos continuar!');chime(false);}}

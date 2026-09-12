@@ -105,6 +105,33 @@
   for(const f of faces){g.beginPath();f.p.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));if(f.p.length>2){g.closePath();g.fillStyle=f.fill;g.fill();}g.strokeStyle=f.stroke;g.lineWidth=Math.max(.5,size*f.line);g.stroke();}
   g.restore();
  }
- root.SophiaCars={draw,models};
+ // Side elevation for the garage: independent 2D silhouette, with both lamps visible.
+ function side(g,size,id,color){
+  const suv=id==='renegade'||id==='song',boxy=id==='renegade',sport=id==='sport';
+  const top=sport?-64:boxy?-102:-91,front=boxy?44:32,rear=boxy?-102:-87;
+  g.save();g.scale(size/100,size/100);
+  const path=(points,fill)=>{g.beginPath();points.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));g.closePath();g.fillStyle=fill;g.fill();};
+  g.fillStyle='#081c3033';g.beginPath();g.ellipse(0,12,155,11,0,0,Math.PI*2);g.fill();
+  path([[-148,-12],[-148,-58],[rear,top],[front,top],[76,-60],[132,-51],[149,-32],[146,-9]],color);
+  path([[-148,-12],[-148,-26],[148,-26],[146,-9]],'#31414b');
+  path([[rear+9,top+8],[-123,-61],[-39,-61],[-39,top+8]],'#284b60');
+  path([[-32,top+8],[front-5,top+8],[64,-61],[-32,-61]],'#355f76');
+  path([[-23,top+10],[front-12,top+10],[48,-67],[22,-67]],'#ffffff20');
+  path([[-140,-54],[128,-48],[141,-37],[-140,-43]],tint(color,.2));
+  g.strokeStyle=tint(color,-.3);g.lineWidth=1;g.beginPath();g.moveTo(-35,-58);g.lineTo(-35,-28);g.moveTo(68,-55);g.lineTo(67,-28);g.stroke();
+  g.fillStyle='#cad5dc';g.fillRect(-59,-52,14,3);g.fillRect(40,-50,14,3);
+  g.fillStyle='#e94350';g.fillRect(-148,-55,boxy?12:17,boxy?22:10);
+  g.fillStyle='#fff1b5';g.fillRect(131,-47,16,9);
+  g.fillStyle='#637b88';g.fillRect(58,-66,17,8);
+  if(suv){g.fillStyle='#34424c';g.fillRect(rear+6,top-5,front-rear-12,4);}
+  if(sport){g.fillStyle='#31414b';g.fillRect(-151,-70,46,5);g.fillRect(-137,-66,5,12);}
+  for(const x of [-98,98]){
+   g.fillStyle='#26343e';g.beginPath();g.arc(x,-10,30,Math.PI,Math.PI*2);g.fill();
+   for(const [r,c] of [[25,'#15212b'],[17,'#a5b6c1'],[13,'#354b5b'],[5,'#d6e0e6']]){g.fillStyle=c;g.beginPath();g.arc(x,-10,r,0,Math.PI*2);g.fill();}
+   g.strokeStyle='#c9d7df';g.lineWidth=3;for(let i=0;i<5;i++){const a=i*Math.PI*2/5;g.beginPath();g.moveTo(x,-10);g.lineTo(x+Math.cos(a)*14,-10+Math.sin(a)*14);g.stroke();}
+  }
+  g.restore();
+ }
+ root.SophiaCars={draw,side,models};
  if(typeof module!=='undefined')module.exports=root.SophiaCars;
 })(typeof window==='undefined'?{}:window);
