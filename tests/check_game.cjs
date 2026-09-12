@@ -54,3 +54,24 @@ run('start()');assert.equal(run('state.stage'),'night');assert.equal(run('state.
 assert(Math.abs(run('roadSlope(0)'))<.07,'gentle curves');
 run('menu(true)');const paused=run('state.elapsed');run('step(.05,neutral)');assert.equal(run('state.elapsed'),paused);
 console.log('PASS: shoulder recovery from rest, braking, collision, collectible, stage completion and transition.');
+
+// No sideways drift, including shoulder assist, before accelerating or after pause.
+for(const x of [0,300,750]){
+ run(`reset();objects=[];state.x=${x};state.steer=1`);
+ run('for(let i=0;i<120;i++)step(1/60,neutral)');assert.equal(run('state.x'),x);assert.equal(run('state.z'),0);
+ run('menu(true);step(.05,neutral);start();step(.05,neutral)');assert.equal(run('state.x'),x);assert.equal(run('state.turnAngle'),0);
+}
+// Full lock can change lanes at the first speed, without maximum sensitivity.
+run('reset();objects=[];state.speed=55;state.gear=1;state.steer=1');
+run('for(let i=0;i<60;i++)step(1/60,neutral)');assert(run('state.x')>=320,'reach adjacent lane within one second');
+const right=run('state.x');run('state.steer=-1;for(let i=0;i<60;i++)step(1/60,neutral)');assert(run('state.x')<right-200,'responsive direction reversal');
+run("reset();objects=[{type:'barrier',z:130,x:0,done:false}];state.z=60;state.speed=140;state.gear=3;step(.05,neutral)");
+assert.equal(run('state.speed'),35,'impact removes 75 percent');
+run('for(let i=0;i<10;i++)step(.05,neutral)');assert.equal(run('state.speed'),35,'impact remains perceptible before acceleration returns');
+run('for(let i=0;i<40;i++)step(.05,neutral)');assert(run('state.speed')>60,'car resumes after collision');
+run("prepareStage('day')");assert.equal(run("objects.some(o=>o.type==='ball')"),false);
+// Check that each event schedules a recognizably different synthesized sound.
+run(`var notes=[];audioContext={state:'running',currentTime:0,destination:{},createOscillator(){return {frequency:{setValueAtTime(v){notes.push(v)},exponentialRampToValueAtTime(){}},connect(){},start(){},stop(){}}},createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}}};state.sound=true;chime(true)`);
+assert.deepEqual(Array.from(run('notes')),[880,1174]);run('notes=[];chime(false)');assert.deepEqual(Array.from(run('notes')),[125]);
+run('notes=[];state.sound=false;chime(true)');assert.equal(run('notes.length'),0);
+console.log('PASS: no stationary drift, responsive lane change, strong collisions/recovery, distinct sounds, no misleading ball.');

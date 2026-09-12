@@ -13,10 +13,13 @@ fontes externas, cadastro ou internet depois de obter esses arquivos.
 ## Como brincar
 
 Escolha Jardim das Nuvens (dia, balões e árvores) ou Estrada das Estrelas (noite).
-Colete estrelas e desvie dos carros, cones e bolas. Cada fase termina após 1 km
+Colete estrelas e desvie dos carros, cones e barreiras listradas. Cada fase termina após 1 km
 simulado, mostra estrelas/desvios e oferece o outro mundo. Não há game over.
 Curvas são suaves. O acostamento limita o ritmo e ajuda o carro a voltar mesmo
-parado; colisões causam apenas desaceleração breve e proteção de 1,5 segundo.
+partindo do repouso ao acelerar; parado não há deslocamento lateral. Colisões
+retiram 75% da velocidade, adiam a aceleração em 0,8 segundo e dão proteção
+de 1,5 segundo. A direção responde por ângulo progressivo, proporcional ao
+movimento para a frente, com troca de faixa mais rápida.
 
 - L: direção.
 - R: câmera na pista; cima/baixo navega nos menus.
@@ -30,7 +33,8 @@ parado; colisões causam apenas desaceleração breve e proteção de 1,5 segund
 Configurações reúne inversão, sensibilidade, zona morta, som opcional, tela cheia
 e diagnóstico do gamepad. Preferências são salvas no navegador. Com o firmware
 invertido validado, use inversão NÃO. A preferência antiga é preservada se já salva.
-O som pode exigir um toque/clique na página por política do navegador.
+Estrelas emitem duas notas agudas e colisões um impacto grave. Ative Sons em
+Configurações. O som pode exigir um toque/clique na página por política do navegador.
 Perda de foco ou desconexão do controle pausa a aventura.
 
 ## Portabilidade

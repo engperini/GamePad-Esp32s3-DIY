@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 const canvas=$('world'),ctx=canvas.getContext('2d');
 const keys=new Set(),held=new Set(),keyClicks=new Set(),touch={left:false,right:false,brake:false,go:false};
-const state={running:false,started:false,z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,invert:false,deadzone:.04,sensitivity:1,selection:0,navTime:0,last:0,toastUntil:0,device:null,stage:'day',screen:'main',stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,sound:false};
+const state={running:false,started:false,z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,invert:false,deadzone:.04,sensitivity:1,selection:0,navTime:0,last:0,toastUntil:0,device:null,stage:'day',screen:'main',stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,sound:false};
 try{const saved=JSON.parse(localStorage.getItem('orbita-settings')||'{}');for(const key of ['invert','sound'])if(typeof saved[key]==='boolean')state[key]=saved[key];if(Number.isFinite(saved.deadzone))state.deadzone=Math.max(0,Math.min(.2,saved.deadzone));if(Number.isFinite(saved.sensitivity))state.sensitivity=Math.max(.6,Math.min(1.8,saved.sensitivity));}catch{}
 const targets=[0,55,95,140],stageLength=24000;
 let objects=[];
@@ -10,10 +10,10 @@ function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({inver
 function settings(){$('invert').textContent=`Volante invertido: ${state.invert?'SIM':'NÃO'}`;$('sensitivity').textContent=`Sensibilidade: ${state.sensitivity.toFixed(1)}×`;$('deadButton').textContent=`Zona morta: ${Math.round(state.deadzone*100)}%`;$('sound').textContent=`Sons: ${state.sound?'SIM':'NÃO'}`;}
 function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','back']:['start','day','night','openSettings','reset']).map($);}
 function highlight(scroll=false){menuActions().forEach((b,i)=>{b.classList.toggle('selected',i===state.selection);if(scroll&&i===state.selection)b.scrollIntoView?.({block:'nearest'});});}
-function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} estrelas e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue as estrelas e desvie dos carros e cones. Se sair da pista, nós ajudamos você a voltar.';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';highlight();}}
+function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} estrelas e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue as estrelas e desvie dos carros, cones e barreiras. Se sair da pista, nós ajudamos você a voltar.';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';highlight();}}
 function showSettings(){state.screen='settings';state.selection=0;menu(true);}
 function back(){state.screen='main';state.selection=0;menu(true);}
-function prepareStage(stage){state.stage=stage;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];for(let i=0;i<25;i++){const z=1800+i*850,lane=[-320,0,320][(i*7+2)%3];objects.push({z,x:lane,type:i%3===0?'car':i%3===1?'cone':'ball',done:false});objects.push({z:z+390,x:[-320,0,320][i%3],type:'star',done:false});}document.body.classList.toggle('day-mode',stage==='day');$('day').classList.toggle('chosen',stage==='day');$('night').classList.toggle('chosen',stage==='night');$('stageName').textContent=stage==='day'?'01 · Jardim das Nuvens':'02 · Estrada das Estrelas';}
+function prepareStage(stage){state.stage=stage;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];for(let i=0;i<25;i++){const z=1800+i*850,lane=[-320,0,320][(i*7+2)%3];objects.push({z,x:lane,type:i%3===0?'car':i%3===1?'cone':'barrier',done:false});objects.push({z:z+390,x:[-320,0,320][i%3],type:'star',done:false});}document.body.classList.toggle('day-mode',stage==='day');$('day').classList.toggle('chosen',stage==='day');$('night').classList.toggle('chosen',stage==='night');$('stageName').textContent=stage==='day'?'01 · Jardim das Nuvens':'02 · Estrada das Estrelas';}
 function start(){unlockAudio();if(state.completed)prepareStage(state.stage==='day'?'night':'day');state.started=true;state.screen='main';menu(false);}
 function reset(){prepareStage(state.stage);start();notify('UMA NOVA AVENTURA!');}
 function notify(text){$('toast').textContent=text;state.toastUntil=performance.now()+2200;}
@@ -22,7 +22,18 @@ function axis(value,zone=.08){return Math.abs(value)<=zone?0:Math.sign(value)*(M
 function rightIndices(gp){return gp.mapping!=='standard'&&gp.axes.length>=5?[3,4]:[2,3];}
 let audioContext;
 function unlockAudio(){if(!state.sound)return;try{const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext=audioContext||new Audio();audioContext.resume().catch(()=>{});}}catch{}}
-function chime(good){if(!state.sound||!audioContext||audioContext.state!=='running')return;const osc=audioContext.createOscillator(),gain=audioContext.createGain(),t=audioContext.currentTime;osc.type='sine';osc.frequency.setValueAtTime(good?660:180,t);osc.frequency.exponentialRampToValueAtTime(good?1100:100,t+.12);gain.gain.setValueAtTime(.06,t);gain.gain.exponentialRampToValueAtTime(.001,t+.2);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.22);}
+function chime(good){
+ if(!state.sound||!audioContext||audioContext.state!=='running')return;
+ const start=audioContext.currentTime;
+ // Stars ring twice in a high register; impacts make one short, low thud.
+ for(let i=0;i<(good?2:1);i++){
+  const osc=audioContext.createOscillator(),gain=audioContext.createGain(),t=start+i*.09;
+  osc.type=good?'sine':'triangle';osc.frequency.setValueAtTime(good?(i?1174:880):125,t);
+  osc.frequency.exponentialRampToValueAtTime(good?(i?1396:1046):45,t+.14);
+  gain.gain.setValueAtTime(.001,t);gain.gain.exponentialRampToValueAtTime(good?.075:.12,t+.008);gain.gain.exponentialRampToValueAtTime(.001,t+.23);
+  osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.25);
+ }
+}
 $('start').onclick=start;$('reset').onclick=reset;$('openSettings').onclick=showSettings;$('back').onclick=back;
 for(const stage of ['day','night'])$(stage).onclick=()=>{prepareStage(stage);state.selection=0;menu(true);};
 $('sensitivity').onclick=()=>{const levels=[.6,1,1.4,1.8];state.sensitivity=levels[(levels.indexOf(state.sensitivity)+1)%levels.length];settings();save();};
@@ -30,6 +41,7 @@ $('invert').onclick=()=>{state.invert=!state.invert;settings();save();};$('deadB
 $('fullScreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else notify('Use tela cheia no menu do navegador.');}catch{notify('Abra a tela cheia pelo menu do navegador.');}};
 $('pause').onclick=()=>{state.screen='main';menu(state.running);};
 for(const [id,key] of [['touchLeft','left'],['touchRight','right'],['touchBrake','brake'],['touchGo','go']]){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);touch[key]=true;unlockAudio();});for(const event of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(event,()=>touch[key]=false);}
+window.addEventListener('pointerdown',unlockAudio);
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','Escape','Enter'].includes(e.code))e.preventDefault();keys.add(e.code);if(!e.repeat)keyClicks.add(e.code);unlockAudio();});window.addEventListener('keyup',e=>keys.delete(e.code));
 function suspend(){keys.clear();keyClicks.clear();Object.keys(touch).forEach(k=>touch[k]=false);if(state.running){state.screen='main';menu(true);}}
 window.addEventListener('blur',suspend);document.addEventListener('visibilitychange',()=>{if(document.hidden)suspend();});
@@ -93,7 +105,7 @@ function draw(now){
  if(!day&&Math.floor(z1/35)%7===0){for(const side of [-1,1]){const px=a.x+side*a.width*.65;ctx.fillStyle='#769888';ctx.fillRect(px,a.y-65*a.k,3*a.k,65*a.k);ctx.fillStyle='#bbfa74';ctx.fillRect(px-4*a.k,a.y-65*a.k,11*a.k,5*a.k);}}
  }
  // Rear silhouette stays in the driver's reference frame; R only changes the view.
- const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.steer*.04*Math.min(state.speed/20,1));ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;poly([[-sz*.5,20],[-sz*.44,-26],[-sz*.29,-52],[sz*.29,-52],[sz*.44,-26],[sz*.5,20]],day?'#ffdb77':'#d7e4d6');ctx.shadowBlur=0;poly([[-sz*.3,-25],[-sz*.23,-45],[sz*.23,-45],[sz*.3,-25]],'#142d39');poly([[-sz*.48,8],[sz*.48,8],[sz*.43,26],[-sz*.43,26]],'#142730');ctx.fillStyle='#ff786e';ctx.fillRect(-sz*.41,6,sz*.27,4);ctx.fillRect(sz*.14,6,sz*.27,4);ctx.fillStyle='#a5f479';ctx.fillRect(-sz*.1,12,sz*.2,3);ctx.restore();
+ const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.35);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;poly([[-sz*.5,20],[-sz*.44,-26],[-sz*.29,-52],[sz*.29,-52],[sz*.44,-26],[sz*.5,20]],day?'#ffdb77':'#d7e4d6');ctx.shadowBlur=0;poly([[-sz*.3,-25],[-sz*.23,-45],[sz*.23,-45],[sz*.3,-25]],'#142d39');poly([[-sz*.48,8],[sz*.48,8],[sz*.43,26],[-sz*.43,26]],'#142730');ctx.fillStyle='#ff786e';ctx.fillRect(-sz*.41,6,sz*.27,4);ctx.fillRect(sz*.14,6,sz*.27,4);ctx.fillStyle='#a5f479';ctx.fillRect(-sz*.1,12,sz*.2,3);ctx.restore();
  drawSpeedFlow();
  if(Math.abs(state.x)>570){ctx.fillStyle='#ffb36a';ctx.font='11px Segoe UI';ctx.textAlign='center';ctx.fillText('Tudo bem! Vamos voltar para a pista ☺',w/2,h*.63);}
 }
@@ -124,21 +136,31 @@ function drawTree(p,index){for(const side of [-1,1]){const x=p.x+side*p.width*.7
 function drawObject(o){const p=projectRoad(o.z),x=p.x+o.x*p.k*w/1400,y=p.y,unit=p.k*Math.min(w/900,1.5);ctx.save();ctx.translate(x,y);ctx.scale(unit,unit);circle(0,0,34,'#122d3b22');
  if(o.type==='star'){ctx.translate(0,-38-Math.sin(state.elapsed*4+o.z)*6);const points=[];for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,r=i%2?17:37;points.push([Math.cos(a)*r,Math.sin(a)*r]);}poly(points,'#ffe477');circle(-9,0,3,'#986424');circle(9,0,3,'#986424');}
  else if(o.type==='cone'){poly([[-32,0],[0,-82],[32,0]],'#ff9770');poly([[-19,-32],[-12,-50],[12,-50],[19,-32]],'#fff3d5');ctx.fillStyle='#cb6d54';ctx.fillRect(-38,-4,76,10);}
- else if(o.type==='ball'){circle(0,-28,31,'#b8a0f3');circle(-8,-36,18,'#e1d5ff');circle(12,-22,10,'#ffc59d');}
+ else if(o.type==='barrier'){
+  ctx.fillStyle='#394557';ctx.fillRect(-36,-46,10,50);ctx.fillRect(26,-46,10,50);
+  ctx.fillStyle='#ffac62';ctx.fillRect(-48,-64,96,34);
+  for(let i=0;i<4;i++){const x=-48+i*24;poly([[x,-64],[x+12,-64],[x+24,-30],[x+12,-30]],'#583b36');}
+  ctx.fillStyle='#fff4d8';ctx.font='bold 20px Segoe UI';ctx.textAlign='center';ctx.fillText('!',0,-39);
+ }
  else{ctx.fillStyle='#172e43';ctx.fillRect(-48,-19,18,27);ctx.fillRect(30,-19,18,27);poly([[-45,0],[-46,-42],[-29,-83],[29,-83],[46,-42],[45,0]],'#f28fac');poly([[-29,-42],[-21,-69],[21,-69],[29,-42]],'#314e76');ctx.fillStyle='#ffe3b7';ctx.fillRect(-37,-17,18,7);ctx.fillRect(19,-17,18,7);ctx.fillStyle='#d96f94';ctx.fillRect(-38,-3,76,9);}
  ctx.restore();}
 function step(dt,controls){
  if(!state.running)return;
- state.elapsed+=dt;state.shield=Math.max(0,state.shield-dt);
+ state.elapsed+=dt;state.shield=Math.max(0,state.shield-dt);state.impact=Math.max(0,state.impact-dt);
  const outside=Math.abs(state.x)>520;
  const target=controls.brake?0:(outside?Math.min(targets[state.gear],60):targets[state.gear]);
- const rate=controls.brake?95:target<state.speed?32:38;
+ const rate=controls.brake?95:target<state.speed?32:state.impact>0?0:38;
  state.speed+=Math.sign(target-state.speed)*Math.min(Math.abs(target-state.speed),rate*dt);
  const advance=state.speed/3.6*dt*24;
  const curve=roadCenter(state.z+advance)-roadCenter(state.z)-roadSlope(state.z)*advance;
- // A gentle return works even from rest; shoulders never cancel acceleration.
- state.x+=state.steer*Math.max(state.speed,25)*dt*2.3-curve;
- if(outside)state.x-=Math.sign(state.x)*Math.min(Math.abs(state.x),330*dt);
+ // Steering follows a heading progressively; lateral travel requires forward motion.
+ // Full lock reaches the adjacent lane in well under a second at cruise speed.
+ if(state.speed>.01){
+  const desiredAngle=state.steer*.9;
+  state.turnAngle+=(desiredAngle-state.turnAngle)*(1-Math.exp(-10*dt));
+  state.x+=Math.tan(state.turnAngle)*advance-curve;
+  if(outside)state.x-=Math.sign(state.x)*Math.min(Math.abs(state.x),330*dt*Math.min(state.speed/25,1));
+ }else state.turnAngle=0;
  state.x=Math.max(-820,Math.min(820,state.x));
  const previousZ=state.z;state.z+=advance;
  for(const object of objects){
@@ -146,7 +168,7 @@ function step(dt,controls){
   const oldZ=object.z;if(object.type==='car')object.z+=110*dt;
   if(oldZ>=previousZ-65&&object.z<=state.z+65){
    const near=Math.abs(state.x-object.x)<(object.type==='star'?115:135);
-   if(near){object.done=true;if(object.type==='star'){state.stars++;notify('★ Mais uma estrela!');chime(true);}else if(!state.shield){state.bumps++;state.shield=1.5;state.speed=Math.max(25,state.speed*.7);notify('Opa! Tudo bem, vamos continuar!');chime(false);}}
+   if(near){object.done=true;if(object.type==='star'){state.stars++;notify('★ Mais uma estrela!');chime(true);}else if(!state.shield){state.bumps++;state.shield=1.5;state.impact=.8;state.speed*=.25;notify('Opa! Tudo bem, vamos continuar!');chime(false);}}
    else if(object.z<state.z-55){object.done=true;if(object.type!=='star')state.passed++;}
   }else if(object.z<state.z-80)object.done=true;
  }
