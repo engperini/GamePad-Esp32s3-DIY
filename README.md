@@ -350,7 +350,9 @@ cabeçalhos SPDX originais.
 
 O firmware agora usa `VOLANTE_INVERTIDO=1`: inverte somente o eixo L horizontal
 antes de enviar o relatório HID. R e botões permanecem com o mesmo mapeamento.
-Esta atualização foi compilada, mas ainda não gravada/testada na placa.
+Esta atualização foi compilada e gravada na COM7 em 11/09/2026, com hash
+verificado e backup da aplicação anterior. O sentido físico ainda requer teste.
+O log após a gravação mostrou reconexões BLE; estabilidade pendente de teste no host.
 Depois de gravar, desative “Volante invertido” no menu do Órbita para evitar
 inversão dupla (a preferência anterior fica salva no navegador).
 
