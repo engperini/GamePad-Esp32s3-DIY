@@ -31,3 +31,18 @@ now+=351; interval(); assert.equal(socket.closed,true); assert.equal(live.getGam
 retry(); const oldSocket=socket; live.setSource('local'); oldSocket.onmessage({data:neutral(2)});
 assert.equal(live.getGamepad(),null); assert.equal(live.wifiSelected(),false);
 console.log('PASS Wi-Fi: validation, arming, sequence/wrap, stale timeout, reconnect and source isolation');
+// Exercise the actual browser bootstrap, with Window's receiver requirement.
+const vm = require('node:vm'), fs = require('node:fs');
+const windowObject = {};
+const calls = [];
+for (const name of ['setInterval','clearInterval','setTimeout','clearTimeout']) {
+  windowObject[name] = function(){ assert.equal(this,windowObject,'Window timer receiver');calls.push(name);return 1; };
+}
+const browserContext={...windowObject,window:windowObject,performance:{now:()=>0},WebSocket:Socket,
+ location:{protocol:'http:',host:'192.168.0.24'},AbortSignal,
+ fetch:()=>Promise.resolve({ok:false})};
+vm.runInNewContext(fs.readFileSync(require.resolve('../server_teste/sophia-link.js'),'utf8'),browserContext);
+const browserLink=windowObject.SophiaLink;
+browserLink.available=true;browserLink.setSource('wifi');socket.onopen();socket.onclose();browserLink.stop();
+for(const name of ['setInterval','clearInterval','setTimeout','clearTimeout']) assert(calls.includes(name),name);
+console.log('PASS: browser bootstrap preserves native Window timer receiver for connection and retry.');

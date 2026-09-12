@@ -59,7 +59,11 @@
     }
   }
   if (typeof module !== 'undefined') { module.exports = { Link, decode }; return; }
-  const link = new Link({ now: () => performance.now(), WebSocket, setInterval, clearInterval, setTimeout, clearTimeout,
+  // Window timer functions require their native receiver in browsers. Wrappers
+  // keep Link's injected environment from becoming their `this` value.
+  const link = new Link({ now: () => performance.now(), WebSocket,
+    setInterval: (fn, ms) => root.setInterval(fn, ms), clearInterval: id => root.clearInterval(id),
+    setTimeout: (fn, ms) => root.setTimeout(fn, ms), clearTimeout: id => root.clearTimeout(id),
     url: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws` });
   root.SophiaLink = link;
   fetch('/api/status', { cache: 'no-store', signal: AbortSignal.timeout(2500) }).then(r => r.ok ? r.json() : null).then(status => {

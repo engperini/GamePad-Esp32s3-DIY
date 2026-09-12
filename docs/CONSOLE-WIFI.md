@@ -129,3 +129,22 @@ Validação da 1.1.1 na placa: conexão à rede aberta confirmada; arquivos web 
 administração sem chave e snapshots passaram. OTA sem chave aplicado de ota_1 para
 ota_0, com servidor disponível após reinício. No Windows foi necessário substituir
 o perfil Wi-Fi antigo protegido pelo perfil aberto da mesma rede.
+
+## Correção 1.1.2 — conexão do volante no navegador
+
+O Chrome reproduziu `TypeError: Illegal invocation` em `socket.onopen` e
+`socket.onclose`: os temporizadores nativos eram chamados como métodos do objeto
+injetado de transporte, sem o receptor Window exigido pelo navegador. Isso impedia
+o primeiro pedido de comandos e também comprometia a reconexão. Os testes de
+protocolo em Node não detectavam essa diferença.
+
+Os temporizadores agora são chamados por wrappers ligados à janela. Um teste do
+bootstrap real da página verifica os quatro temporizadores com a exigência de
+receptor do navegador. Firmware BLE e configuração da rede não foram alterados.
+
+Versão aplicada por OTA pela LAN em 192.168.0.24, de ota_0 para ota_1. No Chrome,
+a página passou a mostrar Sophia · Wi-Fi e eixos recebidos (L=-0,84; R=0/0) no
+menu de diagnóstico. Build, testes do jogo, transporte, HID e partições passaram.
+O mesmo JavaScript atende os acessos AP e LAN; a validação visual desta correção
+foi feita pelo endereço da LAN. O usuário também confirmou nesta etapa que o
+modo roteador serviu a página com sucesso.
