@@ -8,8 +8,7 @@ a inversão do volante já validada. O LED ainda não foi alterado.
 ## Conectar diretamente
 
 1. Ligue o volante e conecte o dispositivo à rede `Sophia-Play-XXXX`.
-2. Use a senha individual impressa na USB durante a inicialização. Nesta instalação,
-   ela também está no arquivo local `backups/ACESSO-CONSOLE.txt`, excluído do Git.
+2. A rede é aberta e não pede senha.
 3. Abra `http://192.168.4.1/`. Se o aparelho avisar que a rede não tem internet,
    escolha permanecer conectado.
 4. Em Configurações, deixe **Controle: Automático**. Solte os botões e o analógico R
@@ -20,8 +19,7 @@ Teclado e toque continuam disponíveis. O servidor local do PC continua funciona
 
 ## Rede da casa
 
-Abra `http://192.168.4.1/console.html`, informe a chave de administração (a mesma
-senha individual do console), escolha o modo e cadastre SSID/senha de 2,4 GHz.
+Abra `http://192.168.4.1/console.html`, escolha o modo e cadastre SSID/senha de 2,4 GHz.
 
 - **Direto:** somente a rede criada pelo ESP32, além do BLE.
 - **Rede local:** conecta ao roteador; após obter IP, desliga a rede própria.
@@ -39,7 +37,7 @@ Use primeiro Ambos para descobrir o IP e depois, se desejar, troque para Rede lo
 
 ## Atualizar por OTA
 
-Na administração, informe a chave, escolha `build/volante_ble_gamepad.bin` e envie.
+Na administração, escolha `build/volante_ble_gamepad.bin` e envie.
 A página mostra progresso e o ESP32 reinicia ao concluir. O jogo e suas páginas
 estão compactados dentro do mesmo firmware: uma atualização entrega todos juntos.
 
@@ -52,8 +50,8 @@ jogabilidade nem a conexão Bluetooth em cada aparelho.
 
 Envie somente a aplicação deste projeto. Bootloader, tabela de partições e imagens
 completas da flash não são arquivos OTA. Alterar partições exige nova migração USB.
-A administração usa HTTP com chave: destina-se à rede local confiável, sem publicar
-portas na internet. Não há assinatura criptográfica de firmware configurada.
+A rede direta e a administração são abertas, sem senha ou chave, por escolha do
+projeto DIY. Qualquer dispositivo conectado pode configurar a rede e enviar OTA. Não há assinatura criptográfica de firmware configurada.
 
 ## Compilar e migrar via USB
 
@@ -120,3 +118,14 @@ Confirmação posterior do usuário: Bluetooth funcionando após reiniciar e esq
 parear novamente no aparelho. Portanto, o uso físico foi confirmado, mas a necessidade
 de refazer o pareamento deve permanecer registrada; esta etapa não mudou a política
 de persistência Bluetooth.
+
+## Atualização 1.1.1
+
+Rede Sophia-Play aberta e administração/OTA sem chave. A senha do roteador continua
+como campo opcional para conectar a uma rede local protegida. A chave antiga é
+removida do NVS. O histórico acima descreve também os testes da versão 1.1.0.
+
+Validação da 1.1.1 na placa: conexão à rede aberta confirmada; arquivos web atuais,
+administração sem chave e snapshots passaram. OTA sem chave aplicado de ota_1 para
+ota_0, com servidor disponível após reinício. No Windows foi necessário substituir
+o perfil Wi-Fi antigo protegido pelo perfil aberto da mesma rede.

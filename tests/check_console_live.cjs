@@ -14,10 +14,8 @@ async function sample(ws){return new Promise((resolve,reject)=>{const timer=setT
   const res=await request('/'+name);assert.equal(res.status,200);assert.equal(res.headers.get('content-encoding'),'gzip');
   assert.deepEqual(Buffer.from(await res.arrayBuffer()),fs.readFileSync(path.join(root,'server_teste',name)));
  }
- assert.equal((await request('/api/config',{method:'POST',body:'{}'})).status,403);
- const credentials=fs.readFileSync(path.join(root,'backups/ACESSO-CONSOLE.txt'),'utf8');
- const key=credentials.match(/administracao: ([0-9a-f]+)/)[1];
- const headers={'X-Sophia-Key':key};
+ const headers={};
+ assert.equal((await request('/api/config',{method:'POST',body:'{}'})).status,400);
  assert.equal((await request('/api/ota',{method:'POST',headers,body:Buffer.alloc(512)})).status,400);
  assert.equal((await request('/api/config',{method:'POST',headers,body:JSON.stringify({mode:'wrong',ssid:'',password:''})})).status,400);
  const ws=await connect();const measurements=[];let previous=-1;
@@ -25,7 +23,7 @@ async function sample(ws){return new Promise((resolve,reject)=>{const timer=setT
  const denied=await new Promise(resolve=>{const other=new WebSocket(base.replace(/^http/,'ws')+'/ws');other.onopen=()=>other.send('?');other.onmessage=()=>{other.close();resolve(false);};other.onerror=()=>resolve(true);other.onclose=()=>resolve(true);});assert(denied,'second pilot must not receive controls');
  assert((await sample(ws))[1]>previous,'first pilot retains control');
  ws.close();measurements.sort((a,b)=>a-b);
- console.log('PASS real HTTP assets, authentication, invalid config/image, 60 WS snapshots, exclusive pilot. RTT median='+measurements[30].toFixed(1)+'ms p95='+measurements[57].toFixed(1)+'ms');
+ console.log('PASS real HTTP assets, open administration, invalid config/image, 60 WS snapshots, exclusive pilot. RTT median='+measurements[30].toFixed(1)+'ms p95='+measurements[57].toFixed(1)+'ms');
  if(process.argv.includes('--ota')){
   const response=await request('/api/ota',{method:'POST',headers,body:fs.readFileSync(path.join(root,'build/volante_ble_gamepad.bin'))});
   assert.equal(response.status,200,await response.text());await sleep(15000);

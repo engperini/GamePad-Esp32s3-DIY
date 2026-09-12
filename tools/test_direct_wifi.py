@@ -9,12 +9,14 @@ from xml.sax.saxutils import escape
 root = Path(__file__).resolve().parents[1]
 credentials = (root/'backups/ACESSO-CONSOLE.txt').read_text(encoding='utf-8')
 ssid = re.search(r'Rede: (.+)', credentials)[1]
-key = re.search(r'administracao: ([0-9a-f]+)', credentials)[1]
 profile = root/'backups/console-wifi-profile.xml'
-profile.write_text(f'''<?xml version="1.0"?><WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1"><name>{escape(ssid)}</name><SSIDConfig><SSID><name>{escape(ssid)}</name></SSID></SSIDConfig><connectionType>ESS</connectionType><connectionMode>manual</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption><sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>{key}</keyMaterial></sharedKey></security></MSM></WLANProfile>''', encoding='utf-8')
+profile.write_text(f'''<?xml version="1.0"?><WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1"><name>{escape(ssid)}</name><SSIDConfig><SSID><name>{escape(ssid)}</name></SSID></SSIDConfig><connectionType>ESS</connectionType><connectionMode>manual</connectionMode><MSM><security><authEncryption><authentication>open</authentication><encryption>none</encryption><useOneX>false</useOneX></authEncryption></security></MSM></WLANProfile>''', encoding='utf-8')
 def netsh(*args):
-    return subprocess.run(['netsh','wlan',*args],capture_output=True)
+    result = subprocess.run(['netsh','wlan',*args],capture_output=True)
+    print(result.stdout.decode('utf-8', 'replace'))
+    return result
 try:
+    netsh('delete','profile',f'name={ssid}')
     netsh('add','profile',f'filename={profile}','user=current')
     netsh('connect',f'name={ssid}')
     time.sleep(7)

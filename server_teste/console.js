@@ -15,10 +15,10 @@ function lock(value) { busy = value; byId('save').disabled = byId('upload').disa
 byId('refresh').onclick = refresh;
 byId('network').onsubmit = async event => {
   event.preventDefault(); if (busy) return;
-  if (!info || !byId('key').value) { report('Conecte ao ESP32 e informe a chave do console.'); return; }
+  if (!info) { report('Conecte ao ESP32.'); return; }
   lock(true);
   try {
-    const response = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Sophia-Key': byId('key').value },
+    const response = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: byId('mode').value, ssid: byId('ssid').value, password: byId('password').value }), signal: AbortSignal.timeout(10000) });
     const text = await response.text(); if (!response.ok) throw Error(text);
     byId('password').value = ''; report(text + ' Após reconectar, abra o novo endereço.');
@@ -27,12 +27,12 @@ byId('network').onsubmit = async event => {
 byId('upload').onclick = () => {
   if (busy) return;
   const file = byId('firmware').files[0];
-  if (!info || !byId('key').value || !file) { report('Conecte ao ESP32, informe a chave e escolha o .bin.'); return; }
+  if (!info || !file) { report('Conecte ao ESP32 e escolha o .bin.'); return; }
   if (!file.name.endsWith('.bin') || file.size < 512 || file.size > info.ota_max) { report('Arquivo inválido ou maior que a partição OTA.'); return; }
   if (!confirm(`Atualizar o console com ${file.name}? O jogo será interrompido e a placa reiniciará.`)) return;
   lock(true); byId('progress').value = 0;
   const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/ota'); xhr.timeout = 190000;
-  xhr.setRequestHeader('X-Sophia-Key', byId('key').value); xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+  xhr.setRequestHeader('Content-Type', 'application/octet-stream');
   xhr.upload.onprogress = e => { if (e.lengthComputable) byId('progress').value = e.loaded / e.total * 100; };
   xhr.onload = () => { report(xhr.responseText || 'Confira o estado do console.'); lock(false); };
   xhr.onerror = xhr.ontimeout = () => { report('Conexão interrompida. Reconecte e confira a versão antes de tentar novamente.'); lock(false); };

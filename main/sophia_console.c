@@ -14,7 +14,6 @@
 #include "esp_app_desc.h"
 #include "esp_app_format.h"
 #include "esp_timer.h"
-#include "esp_random.h"
 #include "esp_mac.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -26,7 +25,7 @@
 static const char *TAG = "SOPHIA_WIFI";
 static httpd_handle_t server;
 static esp_netif_t *sta_netif;
-static char ap_name[33], admin_key[25], station_ssid[33], station_password[65];
+static char ap_name[33], station_ssid[33], station_password[65];
 static char mode[8] = "direct";
 static atomic_bool station_online, access_point_on;
 static atomic_bool restarting;
@@ -65,15 +64,6 @@ static bool same_origin(httpd_req_t *req)
         httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host)) != ESP_OK) return false;
     snprintf(expected, sizeof(expected), "http://%s", host);
     return strcmp(expected, origin) == 0;
-}
-
-static bool authorized(httpd_req_t *req)
-{
-    char supplied[sizeof(admin_key)] = {0};
-    if (!same_origin(req) || httpd_req_get_hdr_value_str(req, "X-Sophia-Key", supplied, sizeof(supplied)) != ESP_OK) return false;
-    unsigned diff = 0;
-    for (size_t i = 0; i < sizeof(admin_key); i++) diff |= (unsigned char)supplied[i] ^ (unsigned char)admin_key[i];
-    return diff == 0;
 }
 
 static esp_err_t status_get(httpd_req_t *req)
@@ -115,7 +105,7 @@ static esp_err_t schedule_restart(httpd_req_t *req)
 
 static esp_err_t config_post(httpd_req_t *req)
 {
-    if (!authorized(req)) return httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Chave do console incorreta");
+    if (!same_origin(req)) return httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Origem invalida");
     if (req->content_len < 2 || req->content_len > 512) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Configuracao invalida");
     char body[513]; int got = 0;
     while (got < req->content_len) {
@@ -148,7 +138,7 @@ static esp_err_t config_post(httpd_req_t *req)
 
 static esp_err_t ota_post(httpd_req_t *req)
 {
-    if (!authorized(req)) return httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Chave do console incorreta");
+    if (!same_origin(req)) return httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Origem invalida");
     const esp_partition_t *part = esp_ota_get_next_update_partition(NULL);
     if (!part || req->content_len < 512 || req->content_len > part->size) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Tamanho de firmware invalido");
     // Validate the project and chip before erasing even the inactive slot.
@@ -284,12 +274,9 @@ esp_err_t sophia_console_start(void)
 {
     nvs_handle_t nvs;
     ESP_ERROR_CHECK(nvs_open("sophia_wifi", NVS_READWRITE, &nvs));
-    size_t size = sizeof(admin_key);
-    if (nvs_get_str(nvs, "key", admin_key, &size) != ESP_OK) {
-        uint8_t random[8]; esp_fill_random(random, sizeof(random));
-        for (unsigned i = 0; i < sizeof(random); i++) snprintf(admin_key + i * 2, 3, "%02x", random[i]);
-        ESP_ERROR_CHECK(nvs_set_str(nvs, "key", admin_key)); ESP_ERROR_CHECK(nvs_commit(nvs));
-    }
+    esp_err_t key_err = nvs_erase_key(nvs, "key");
+    if (key_err == ESP_OK) ESP_ERROR_CHECK(nvs_commit(nvs));
+    size_t size;
     size = sizeof(station_ssid); nvs_get_str(nvs, "ssid", station_ssid, &size);
     size = sizeof(station_password); nvs_get_str(nvs, "password", station_password, &size);
     size = sizeof(mode); nvs_get_str(nvs, "mode", mode, &size); nvs_close(nvs);
@@ -306,9 +293,8 @@ esp_err_t sophia_console_start(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event, NULL));
     ESP_ERROR_CHECK(esp_wifi_set_mode(strcmp(mode, "direct") ? WIFI_MODE_APSTA : WIFI_MODE_AP));
-    wifi_config_t ap = {.ap = {.channel = 6, .max_connection = 3, .authmode = WIFI_AUTH_WPA2_PSK}};
+    wifi_config_t ap = {.ap = {.channel = 6, .max_connection = 3, .authmode = WIFI_AUTH_OPEN}};
     strlcpy((char *)ap.ap.ssid, ap_name, sizeof(ap.ap.ssid)); ap.ap.ssid_len = strlen(ap_name);
-    strlcpy((char *)ap.ap.password, admin_key, sizeof(ap.ap.password));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap));
     if (strcmp(mode, "direct")) {
         wifi_config_t sta = {0}; memcpy(sta.sta.ssid, station_ssid, strlen(station_ssid));
@@ -318,8 +304,7 @@ esp_err_t sophia_console_start(void)
     }
     ESP_ERROR_CHECK(esp_wifi_start()); atomic_store(&access_point_on, true);
     ESP_LOGI(TAG, "Console direto: rede %s, http://192.168.4.1/", ap_name);
-    // Per-device secret is exposed only to the owner on the physical serial port.
-    ESP_LOGI(TAG, "Chave Wi-Fi/administracao: %s", admin_key);
+    ESP_LOGI(TAG, "Rede aberta, sem senha ou chave de administracao");
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 8; config.stack_size = 8192; config.max_open_sockets = 5;
     config.lru_purge_enable = true; config.uri_match_fn = httpd_uri_match_wildcard;
