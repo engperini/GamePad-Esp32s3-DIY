@@ -148,3 +148,16 @@ menu de diagnóstico. Build, testes do jogo, transporte, HID e partições passa
 O mesmo JavaScript atende os acessos AP e LAN; a validação visual desta correção
 foi feita pelo endereço da LAN. O usuário também confirmou nesta etapa que o
 modo roteador serviu a página com sucesso.
+
+## Atualização 1.2.0 — garagem e novos tesouros
+
+Adicionada à tela inicial a Garagem da Sophia, com Renegade branco, BYD Song Pro
+cinza, Foguete e Buggy, seis cores e prévia animada. Os carros são desenhos vetoriais
+do Canvas, compactos e recoloríveis; não usam fotografias nem dependem de internet.
+Coração, doce e cristal passam a alternar com a estrela como colecionáveis.
+
+Aplicada por OTA pela rede local em `192.168.0.24`, de `ota_1` para `ota_0`.
+O status confirmou firmware 1.2.0, modo híbrido e servidor ativo depois do reinício.
+A garagem foi aberta e revisada no Chrome diretamente a partir do ESP32; a conexão
+`Sophia · Wi-Fi` voltou após a janela normal de reconexão. Os testes de física,
+garagem, colecionáveis, transporte Wi-Fi, HID e partições passaram.

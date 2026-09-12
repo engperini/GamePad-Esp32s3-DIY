@@ -373,6 +373,9 @@ curvas suaves, tráfego, cones/barreiras, estrelas e chegada. Sair da pista não
 o carro: o acostamento reduz o ritmo e auxilia o retorno. Configurações de controle
 ficam em menu próprio. Há teclado, gamepad e botões de toque, com sons opcionais.
 
+A garagem permite escolher Renegade, BYD Song Pro, Foguete ou Buggy, aplicar seis
+cores e ver uma prévia animada. Estrelas, corações, doces e cristais são colecionáveis.
+
 Uso: [server_teste/JOGO.md](server_teste/JOGO.md).
 Console independente: [docs/CONSOLE-WIFI.md](docs/CONSOLE-WIFI.md).
 Servidor HTTP, controles WebSocket, modos AP/STA/AP+STA e atualização OTA implementados.

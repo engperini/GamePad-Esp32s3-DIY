@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const elements = new Map();
 const drawing = new Proxy({}, {get:(_,key)=>key==='createLinearGradient'?()=>({addColorStop(){}}):()=>{},set:()=>true});
-const get=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',style:{},addEventListener(){},classList:{toggle(){}},replaceChildren(){},add(){},getContext:()=>drawing,click(){this.onclick();}});return elements.get(id);};
+const get=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',style:{},width:id==='carPreview'?520:0,height:id==='carPreview'?250:0,addEventListener(){},classList:{toggle(){}},replaceChildren(){},add(){},getContext:()=>drawing,click(){this.onclick();}});return elements.get(id);};
 let pads=[{index:0,id:'GamePad Sophia',mapping:'',axes:[0,0,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))}];
 const context={document:{body:{classList:{toggle(){}}},getElementById:get,addEventListener(){},querySelectorAll:()=>[]},window:{addEventListener(){}},navigator:{getGamepads:()=>pads},localStorage:{getItem:()=>null,setItem(){}},Option:function(){},innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>0},requestAnimationFrame(){},console};
 vm.createContext(context);vm.runInContext(fs.readFileSync('server_teste/jogo.js','utf8'),context);
@@ -70,11 +70,18 @@ assert.equal(run('state.speed'),35,'impact removes 75 percent');
 run('for(let i=0;i<10;i++)step(.05,neutral)');assert.equal(run('state.speed'),35,'impact remains perceptible before acceleration returns');
 run('for(let i=0;i<40;i++)step(.05,neutral)');assert(run('state.speed')>60,'car resumes after collision');
 run("prepareStage('day')");assert.equal(run("objects.some(o=>o.type==='ball')"),false);
+assert.deepEqual(Array.from(run("[...new Set(objects.filter(o=>['star','heart','candy','gem'].includes(o.type)).map(o=>o.type))]")),['star','heart','candy','gem']);
+run("reset();objects=['heart','candy','gem'].map((type,i)=>({type,z:state.z+30+i*500,x:state.x,done:false}));state.speed=55;state.gear=1");
+for(let i=1;i<=3;i++){run('objects[0].z=state.z+30;step(.05,neutral);objects.shift()');assert.equal(run('state.stars'),i,`collectible ${i}`);}
 // Check that each event schedules a recognizably different synthesized sound.
 run(`var notes=[];audioContext={state:'running',currentTime:0,destination:{},createOscillator(){return {frequency:{setValueAtTime(v){notes.push(v)},exponentialRampToValueAtTime(){}},connect(){},start(){},stop(){}}},createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}}};state.sound=true;chime(true)`);
 assert.deepEqual(Array.from(run('notes')),[880,1174]);run('notes=[];chime(false)');assert.deepEqual(Array.from(run('notes')),[125]);
 run('notes=[];state.sound=false;chime(true)');assert.equal(run('notes.length'),0);
 console.log('PASS: no stationary drift, responsive lane change, strong collisions/recovery, distinct sounds, no misleading ball.');
+run("showGarage();$('modelSong').click();$('colorBlue').click();drawGaragePreview(1000)");
+assert.equal(run('state.screen'),'garage');assert.equal(run('state.carModel'),'song');assert.equal(run('state.carColor'),'#65bff0');
+assert.equal(run('menuActions().length'),11);run("$('garageBack').click()");assert.equal(run('state.screen'),'main');
+console.log('PASS: garage models, colors, rotating preview, persistence state and gamepad menu actions.');
 // Wi-Fi source takes precedence and signal loss pauses even with another BLE pad present.
 const wifiPad={index:99,id:'Sophia Wi-Fi',mapping:'standard',axes:[-.8,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))};
 let wireless=wifiPad;

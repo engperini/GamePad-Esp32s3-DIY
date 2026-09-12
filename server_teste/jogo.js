@@ -2,18 +2,19 @@
 const $=id=>document.getElementById(id);
 const canvas=$('world'),ctx=canvas.getContext('2d');
 const keys=new Set(),held=new Set(),keyClicks=new Set(),touch={left:false,right:false,brake:false,go:false};
-const state={running:false,started:false,z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,invert:false,deadzone:.04,sensitivity:1,selection:0,navTime:0,last:0,toastUntil:0,device:null,stage:'day',screen:'main',stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,sound:false};
-try{const saved=JSON.parse(localStorage.getItem('orbita-settings')||'{}');for(const key of ['invert','sound'])if(typeof saved[key]==='boolean')state[key]=saved[key];if(Number.isFinite(saved.deadzone))state.deadzone=Math.max(0,Math.min(.2,saved.deadzone));if(Number.isFinite(saved.sensitivity))state.sensitivity=Math.max(.6,Math.min(1.8,saved.sensitivity));}catch{}
+const state={running:false,started:false,z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,invert:false,deadzone:.04,sensitivity:1,selection:0,navTime:0,last:0,toastUntil:0,device:null,stage:'day',screen:'main',stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,sound:false,carModel:'renegade',carColor:'#f5f4ec'};
+try{const saved=JSON.parse(localStorage.getItem('orbita-settings')||'{}');for(const key of ['invert','sound'])if(typeof saved[key]==='boolean')state[key]=saved[key];if(Number.isFinite(saved.deadzone))state.deadzone=Math.max(0,Math.min(.2,saved.deadzone));if(Number.isFinite(saved.sensitivity))state.sensitivity=Math.max(.6,Math.min(1.8,saved.sensitivity));if(['renegade','song','sport','buggy'].includes(saved.carModel))state.carModel=saved.carModel;if(/^#[0-9a-f]{6}$/i.test(saved.carColor||''))state.carColor=saved.carColor;}catch{}
 const targets=[0,55,95,140],stageLength=24000;
 let objects=[];
-function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({invert:state.invert,deadzone:state.deadzone,sensitivity:state.sensitivity,sound:state.sound}));}catch{}}
+function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({invert:state.invert,deadzone:state.deadzone,sensitivity:state.sensitivity,sound:state.sound,carModel:state.carModel,carColor:state.carColor}));}catch{}}
 function settings(){$('invert').textContent=`Volante invertido: ${state.invert?'SIM':'NÃO'}`;$('sensitivity').textContent=`Sensibilidade: ${state.sensitivity.toFixed(1)}×`;$('deadButton').textContent=`Zona morta: ${Math.round(state.deadzone*100)}%`;$('sound').textContent=`Sons: ${state.sound?'SIM':'NÃO'}`;}
-function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','help','back']:['start','day','night','openSettings','reset']).map($);}
+function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','help','back']:state.screen==='garage'?['modelRenegade','modelSong','modelSport','modelBuggy','colorWhite','colorGray','colorPink','colorBlue','colorGreen','colorYellow','garageBack']:['start','day','night','customize','openSettings','reset']).map($);}
 function highlight(scroll=false){menuActions().forEach((b,i)=>{b.classList.toggle('selected',i===state.selection);if(scroll&&i===state.selection)b.scrollIntoView?.({block:'nearest'});});}
-function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} estrelas e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue as estrelas e desvie dos carros, cones e barreiras. Se sair da pista, nós ajudamos você a voltar.';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';highlight();}}
+function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('garageMenu').hidden=state.screen!=='garage';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} tesouros e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue estrelas, corações, doces e cristais. Desvie dos obstáculos e divirta-se!';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';updateGarage();highlight();}}
 function showSettings(){state.screen='settings';state.selection=0;menu(true);}
+function showGarage(){state.screen='garage';state.selection=0;menu(true);}
 function back(){state.screen='main';state.selection=0;menu(true);}
-function prepareStage(stage){state.stage=stage;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];for(let i=0;i<25;i++){const z=1800+i*850,lane=[-320,0,320][(i*7+2)%3];objects.push({z,x:lane,type:i%3===0?'car':i%3===1?'cone':'barrier',done:false});objects.push({z:z+390,x:[-320,0,320][i%3],type:'star',done:false});}document.body.classList.toggle('day-mode',stage==='day');$('day').classList.toggle('chosen',stage==='day');$('night').classList.toggle('chosen',stage==='night');$('stageName').textContent=stage==='day'?'01 · Jardim das Nuvens':'02 · Estrada das Estrelas';}
+function prepareStage(stage){state.stage=stage;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];const treasures=['star','heart','candy','gem'];for(let i=0;i<25;i++){const z=1800+i*850,lane=[-320,0,320][(i*7+2)%3];objects.push({z,x:lane,type:i%3===0?'car':i%3===1?'cone':'barrier',done:false});objects.push({z:z+390,x:[-320,0,320][i%3],type:treasures[i%treasures.length],done:false});}document.body.classList.toggle('day-mode',stage==='day');$('day').classList.toggle('chosen',stage==='day');$('night').classList.toggle('chosen',stage==='night');$('stageName').textContent=stage==='day'?'01 · Jardim das Nuvens':'02 · Estrada das Estrelas';}
 function start(){unlockAudio();if(state.completed)prepareStage(state.stage==='day'?'night':'day');state.started=true;state.screen='main';menu(false);}
 function reset(){prepareStage(state.stage);start();notify('UMA NOVA AVENTURA!');}
 function notify(text){$('toast').textContent=text;state.toastUntil=performance.now()+2200;}
@@ -36,7 +37,11 @@ function chime(good){
 }
 $('source').onclick=()=>{const link=window.SophiaLink;if(!link)return;const sources=['auto','local','wifi'];link.setSource(sources[(sources.indexOf(link.source)+1)%sources.length]);$('source').textContent='Controle: '+({auto:'Automático',local:'Bluetooth / teclado',wifi:'Wi-Fi do ESP32'})[link.source];};
 $('help').onclick=()=>{$('consoleHelp').hidden=!$('consoleHelp').hidden;if(!$('consoleHelp').hidden)$('consoleHelp').scrollIntoView?.({block:'nearest'});};
-$('start').onclick=start;$('reset').onclick=reset;$('openSettings').onclick=showSettings;$('back').onclick=back;
+$('start').onclick=start;$('reset').onclick=reset;$('customize').onclick=showGarage;$('openSettings').onclick=showSettings;$('back').onclick=back;$('garageBack').onclick=back;
+const modelButtons={modelRenegade:['renegade','#f5f4ec'],modelSong:['song','#8d98a5'],modelSport:['sport','#f28fac'],modelBuggy:['buggy','#ffd76e']};
+for(const [id,[model,color]] of Object.entries(modelButtons))$(id).onclick=()=>{state.carModel=model;state.carColor=color;updateGarage();save();};
+const colorButtons={colorWhite:'#f5f4ec',colorGray:'#8d98a5',colorPink:'#f28fac',colorBlue:'#65bff0',colorGreen:'#8ed174',colorYellow:'#ffd76e'};
+for(const [id,color] of Object.entries(colorButtons))$(id).onclick=()=>{state.carColor=color;updateGarage();save();};
 for(const stage of ['day','night'])$(stage).onclick=()=>{prepareStage(stage);state.selection=0;menu(true);};
 $('sensitivity').onclick=()=>{const levels=[.6,1,1.4,1.8];state.sensitivity=levels[(levels.indexOf(state.sensitivity)+1)%levels.length];settings();save();};
 $('invert').onclick=()=>{state.invert=!state.invert;settings();save();};$('deadButton').onclick=()=>{state.deadzone=(Math.round(state.deadzone*100)+2)%22/100;settings();save();};$('sound').onclick=()=>{state.sound=!state.sound;unlockAudio();settings();save();};
@@ -64,7 +69,7 @@ function input(now){
  const clickW=keyClicks.delete('KeyW'),clickEsc=keyClicks.delete('Escape'),clickEnter=keyClicks.delete('Enter');
  const accelerate=edge('a',a||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
  $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
- if((pause||backPressed)&&!state.running&&state.screen==='settings'){back();return {brake:false,cx:0,cy:0};}
+ if((pause||backPressed)&&!state.running&&state.screen!=='main'){back();return {brake:false,cx:0,cy:0};}
  if(pause&&state.started){state.screen='main';menu(state.running);}
  if(!state.running){const nav=camY>.5||keys.has('ArrowDown')?1:camY<-.5||keys.has('ArrowUp')?-1:0;if(nav&&now>state.navTime){state.selection=(state.selection+nav+menuActions().length)%menuActions().length;highlight(true);state.navTime=now+260;}if(!nav)state.navTime=0;if(accelerate||enter)menuActions()[state.selection].click();return {brake:false,cx:0,cy:0};}
  if(accelerate){state.gear=state.gear%3+1;notify(`VELOCIDADE ${state.gear} / ${targets[state.gear]} KM/H`);}
@@ -87,6 +92,39 @@ function carPosition(){const p=projectRoad(state.z);return {x:p.x+state.x*p.k*w/
 let w=0,h=0;
 function resize(){w=innerWidth;h=innerHeight;const d=Math.min(devicePixelRatio||1,2);canvas.width=w*d;canvas.height=h*d;ctx.setTransform(d,0,0,d,0,0);}window.addEventListener('resize',resize);resize();
 function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fill();}
+function carPath(g,points,color){g.fillStyle=color;g.beginPath();points.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));g.closePath();g.fill();}
+function paintPlayerCar(g,size,model,color,turn=0){
+ const side=turn*.16,wide=model==='song'?1.06:model==='sport'?1.1:model==='buggy'?.94:1;
+ g.save();g.scale(size/100,size/100);g.transform(wide,0,side,1,0,0);
+ g.fillStyle='#10232c55';g.beginPath();g.ellipse(0,18,54,13,0,0,Math.PI*2);g.fill();
+ g.fillStyle='#172e43';g.fillRect(-49,-10,17,30);g.fillRect(32,-10,17,30);
+ if(model==='renegade'){
+  carPath(g,[[-50,12],[-46,-48],[-32,-73],[32,-73],[46,-48],[50,12]],color);
+  carPath(g,[[-31,-45],[-25,-65],[25,-65],[31,-45]],'#31536d');
+  g.fillStyle='#26333a';g.fillRect(-37,-77,74,5);g.fillRect(-30,-82,5,10);g.fillRect(25,-82,5,10);
+  g.fillStyle='#ff655d';for(const x of [-34,20]){g.fillRect(x,-10,14,14);g.fillStyle='#ffd7b1';g.fillRect(x+5,-6,4,6);g.fillStyle='#ff655d';}
+ }else if(model==='song'){
+  carPath(g,[[-53,12],[-47,-39],[-29,-68],[29,-68],[47,-39],[53,12]],color);
+  carPath(g,[[-32,-39],[-24,-60],[24,-60],[32,-39]],'#294b68');
+  g.fillStyle='#ff504e';g.fillRect(-43,-10,86,7);g.fillStyle='#ffb2a0';g.fillRect(-27,-8,54,2);
+ }else if(model==='sport'){
+  carPath(g,[[-56,14],[-48,-30],[-25,-55],[25,-55],[48,-30],[56,14]],color);
+  carPath(g,[[-31,-29],[-21,-49],[21,-49],[31,-29]],'#294b68');
+  g.fillStyle='#202d38';g.fillRect(-48,-60,96,5);g.fillRect(-39,-60,5,12);g.fillRect(34,-60,5,12);
+  g.fillStyle='#ff565c';g.fillRect(-43,-7,25,6);g.fillRect(18,-7,25,6);
+ }else{
+  carPath(g,[[-47,14],[-43,-27],[-28,-52],[28,-52],[43,-27],[47,14]],color);
+  g.strokeStyle='#26343d';g.lineWidth=6;g.beginPath();g.moveTo(-28,-37);g.lineTo(-20,-72);g.lineTo(20,-72);g.lineTo(28,-37);g.stroke();
+  g.fillStyle='#28465b';g.fillRect(-25,-42,50,22);g.fillStyle='#ff655d';g.fillRect(-38,-5,18,7);g.fillRect(20,-5,18,7);
+ }
+ g.save();g.globalAlpha*=.22;carPath(g,[[-38,-43],[-25,-65],[-7,-65],[-18,-40]],'#fff');g.restore();
+ g.fillStyle='#172730';g.fillRect(-45,11,90,14);g.fillStyle='#9cf17b';g.fillRect(-10,14,20,3);g.restore();
+}
+function updateGarage(){
+ for(const [id,[model]] of Object.entries(modelButtons))$(id).classList.toggle('chosen',model===state.carModel);
+ for(const [id,color] of Object.entries(colorButtons))$(id).classList.toggle('chosen',color===state.carColor);
+}
+function drawGaragePreview(now){const c=$('carPreview');if(state.screen!=='garage'||c.hidden)return;const g=c.getContext('2d'),turn=Math.sin(now/950);g.clearRect(0,0,c.width,c.height);g.save();g.translate(c.width/2,c.height*.66);g.scale(1.35,1.35);g.rotate(turn*.025);paintPlayerCar(g,100,state.carModel,state.carColor,turn);g.restore();g.fillStyle='#dfffc8';g.font='700 14px system-ui';g.textAlign='center';g.fillText(({renegade:'RENEGADE',song:'BYD SONG PRO',sport:'FOGUETE',buggy:'BUGGY'})[state.carModel]+' · SUA COR',c.width/2,c.height-18);}
 function draw(now){
  const day=state.stage==='day';
  const horizon=h*(.43+state.pitch*.12),shift=state.yaw*w*.2;
@@ -107,9 +145,10 @@ function draw(now){
  for(const object of objects)if(!object.done&&object.z>=z1&&object.z<z2&&object.z>=state.z-45)drawObject(object);
  if(!day&&Math.floor(z1/35)%7===0){for(const side of [-1,1]){const px=a.x+side*a.width*.65;ctx.fillStyle='#769888';ctx.fillRect(px,a.y-65*a.k,3*a.k,65*a.k);ctx.fillStyle='#bbfa74';ctx.fillRect(px-4*a.k,a.y-65*a.k,11*a.k,5*a.k);}}
  }
- // Rear silhouette stays in the driver's reference frame; R only changes the view.
- const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.35);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;poly([[-sz*.5,20],[-sz*.44,-26],[-sz*.29,-52],[sz*.29,-52],[sz*.44,-26],[sz*.5,20]],day?'#ffdb77':'#d7e4d6');ctx.shadowBlur=0;poly([[-sz*.3,-25],[-sz*.23,-45],[sz*.23,-45],[sz*.3,-25]],'#142d39');poly([[-sz*.48,8],[sz*.48,8],[sz*.43,26],[-sz*.43,26]],'#142730');ctx.fillStyle='#ff786e';ctx.fillRect(-sz*.41,6,sz*.27,4);ctx.fillRect(sz*.14,6,sz*.27,4);ctx.fillStyle='#a5f479';ctx.fillRect(-sz*.1,12,sz*.2,3);ctx.restore();
+ // The chosen car stays in the driver's reference frame; R only changes the view.
+ const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.35);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'#91f6c5';ctx.shadowBlur=16;paintPlayerCar(ctx,sz,state.carModel,state.carColor,state.turnAngle);ctx.restore();
  drawSpeedFlow();
+ drawGaragePreview(now);
  if(Math.abs(state.x)>570){ctx.fillStyle='#ffb36a';ctx.font='11px Segoe UI';ctx.textAlign='center';ctx.fillText('Tudo bem! Vamos voltar para a pista ☺',w/2,h*.63);}
 }
 // Sparse peripheral trails communicate speed without hiding the road.
@@ -138,6 +177,9 @@ function drawClouds(horizon,shift){
 function drawTree(p,index){for(const side of [-1,1]){const x=p.x+side*p.width*.75,r=48*p.k;ctx.fillStyle='#9d826a';ctx.fillRect(x-r*.12,p.y-r,r*.24,r);circle(x,p.y-r*1.6,r,Math.abs(index)%2?'#64ad8b':'#acd27d');circle(x-r*.5,p.y-r*1.4,r*.6,'#91cb80');circle(x+side*r*.4,p.y-r*1.8,r*.26,'#ffe0ae');}}
 function drawObject(o){const p=projectRoad(o.z),x=p.x+o.x*p.k*w/1400,y=p.y,unit=p.k*Math.min(w/900,1.5);ctx.save();ctx.translate(x,y);ctx.scale(unit,unit);circle(0,0,34,'#122d3b22');
  if(o.type==='star'){ctx.translate(0,-38-Math.sin(state.elapsed*4+o.z)*6);const points=[];for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,r=i%2?17:37;points.push([Math.cos(a)*r,Math.sin(a)*r]);}poly(points,'#ffe477');circle(-9,0,3,'#986424');circle(9,0,3,'#986424');}
+ else if(o.type==='heart'){ctx.translate(0,-42-Math.sin(state.elapsed*4+o.z)*6);ctx.fillStyle='#ff7196';ctx.beginPath();ctx.moveTo(0,28);ctx.bezierCurveTo(-48,-3,-31,-35,0,-13);ctx.bezierCurveTo(31,-35,48,-3,0,28);ctx.fill();circle(-11,-8,3,'#852a52');circle(11,-8,3,'#852a52');}
+ else if(o.type==='candy'){ctx.translate(0,-40-Math.sin(state.elapsed*4+o.z)*6);poly([[-42,-16],[-25,-8],[-25,9],[-42,18]],'#83d9ec');poly([[42,-16],[25,-8],[25,9],[42,18]],'#83d9ec');ctx.fillStyle='#ffb257';ctx.fillRect(-26,-17,52,35);ctx.fillStyle='#fff0c7';for(let i=-18;i<20;i+=14)ctx.fillRect(i,-17,7,35);circle(-8,-5,2,'#713e58');circle(8,-5,2,'#713e58');}
+ else if(o.type==='gem'){ctx.translate(0,-42-Math.sin(state.elapsed*4+o.z)*6);poly([[0,-39],[34,-10],[20,31],[-20,31],[-34,-10]],'#7ce8ef');poly([[0,-39],[12,-10],[0,31],[-12,-10]],'#d7ffff');circle(-9,-7,3,'#246a83');circle(9,-7,3,'#246a83');}
  else if(o.type==='cone'){poly([[-32,0],[0,-82],[32,0]],'#ff9770');poly([[-19,-32],[-12,-50],[12,-50],[19,-32]],'#fff3d5');ctx.fillStyle='#cb6d54';ctx.fillRect(-38,-4,76,10);}
  else if(o.type==='barrier'){
   ctx.fillStyle='#394557';ctx.fillRect(-36,-46,10,50);ctx.fillRect(26,-46,10,50);
@@ -170,14 +212,14 @@ function step(dt,controls){
   if(object.done)continue;
   const oldZ=object.z;if(object.type==='car')object.z+=110*dt;
   if(oldZ>=previousZ-65&&object.z<=state.z+65){
-   const near=Math.abs(state.x-object.x)<(object.type==='star'?115:135);
-   if(near){object.done=true;if(object.type==='star'){state.stars++;notify('★ Mais uma estrela!');chime(true);}else if(!state.shield){state.bumps++;state.shield=1.5;state.impact=.8;state.speed*=.25;notify('Opa! Tudo bem, vamos continuar!');chime(false);}}
-   else if(object.z<state.z-55){object.done=true;if(object.type!=='star')state.passed++;}
+   const treasure=['star','heart','candy','gem'].includes(object.type),near=Math.abs(state.x-object.x)<(treasure?115:135);
+   if(near){object.done=true;if(treasure){state.stars++;notify(({star:'★ Estrela brilhante!',heart:'♥ Coração feliz!',candy:'🍬 Doce surpresa!',gem:'◆ Cristal mágico!'})[object.type]);chime(true);}else if(!state.shield){state.bumps++;state.shield=1.5;state.impact=.8;state.speed*=.25;notify('Opa! Tudo bem, vamos continuar!');chime(false);}}
+   else if(object.z<state.z-55){object.done=true;if(!treasure)state.passed++;}
   }else if(object.z<state.z-80)object.done=true;
  }
  state.yaw+=(controls.cx*.95-state.yaw)*Math.min(1,dt*5);state.pitch+=(controls.cy*.9-state.pitch)*Math.min(1,dt*5);
  if(state.z>=stageLength){state.z=stageLength;state.completed=true;state.screen='main';state.selection=0;menu(true);chime(true);}
 }
 function frame(now){const dt=Math.min((now-state.last)/1000||0,.05);state.last=now;const controls=input(now);step(dt,controls);
- draw(now);$('speed').textContent=String(Math.round(state.speed)).padStart(3,'0');$('gear').textContent=state.gear?['','PASSEIO','AVENTURA','TURBO'][state.gear]:'VAMOS?';$('distance').textContent=(state.z/24000).toFixed(2)+' km';$('score').textContent='★ '+state.stars;$('progress').style.width=(100*state.z/stageLength)+'%';document.querySelectorAll('.steps i').forEach((el,i)=>el.classList.toggle('on',i<state.gear));if(now>state.toastUntil)$('toast').textContent='';requestAnimationFrame(frame);}
+ draw(now);$('speed').textContent=String(Math.round(state.speed)).padStart(3,'0');$('gear').textContent=state.gear?['','PASSEIO','AVENTURA','TURBO'][state.gear]:'VAMOS?';$('distance').textContent=(state.z/24000).toFixed(2)+' km';$('score').textContent='✦ '+state.stars;$('progress').style.width=(100*state.z/stageLength)+'%';document.querySelectorAll('.steps i').forEach((el,i)=>el.classList.toggle('on',i<state.gear));if(now>state.toastUntil)$('toast').textContent='';requestAnimationFrame(frame);}
 prepareStage('day');settings();menu(true);requestAnimationFrame(frame);

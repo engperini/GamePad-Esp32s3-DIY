@@ -37,6 +37,18 @@ Estrelas emitem duas notas agudas e colisões um impacto grave. Ative Sons em
 Configurações. O som pode exigir um toque/clique na página por política do navegador.
 Perda de foco ou desconexão do controle pausa a aventura.
 
+## Garagem da Sophia
+
+Na tela inicial, **Personalizar carro** abre a garagem. Há quatro desenhos vetoriais:
+Renegade, BYD Song Pro, Foguete e Buggy. O Renegade começa branco e o Song Pro,
+cinza; qualquer modelo aceita branco, cinza, rosa, azul, verde ou amarelo. A prévia
+anima o carro para mostrar a forma e a pintura. A escolha fica salva neste navegador
+e aparece no carro dirigido. O menu funciona por toque/mouse, teclado e gamepad.
+
+Além das estrelas, a pista alterna corações, doces e cristais. Todos são colecionáveis,
+usam o mesmo som positivo e contam como tesouros; carros, cones e barreiras continuam
+sendo obstáculos.
+
 ## Portabilidade
 
 O pacote é web estático, não um APK/PWA instalado. Android e TVs ainda precisam
