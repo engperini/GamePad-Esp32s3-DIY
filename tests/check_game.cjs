@@ -107,6 +107,16 @@ for(const mapping of ['', 'standard'])for(const count of [5,17]){
 for(const stage of ['day','night','coast','hills']){
  run(`prepareStage('${stage}');draw(1000)`);
  assert(run('stageLength')>=60000,'longer tracks');
+ const sections=Array.from(run('tracks[state.stage].segments'));
+ assert(sections.filter(s=>s.straight).length>=8,'multiple inserted straights');
+ assert.equal(sections.filter(s=>!s.straight).reduce((sum,s)=>sum+s.end-s.start,0),run('tracks[state.stage].originalLength'),'all original curve distance retained');
+ assert(run('stageLength')>run('tracks[state.stage].originalLength')*1.5,'added distance rather than replacing bends');
+ for(const section of sections){
+  const z=(section.start+section.end)/2;
+  if(section.straight)assert(Math.abs(run(`roadCenter(${z}+500)-2*roadCenter(${z})+roadCenter(${z}-500)`))<1e-6,'straight has zero curvature');
+  if(section.start>0){assert(Math.abs(run(`roadCenter(${section.start}+.0001)-roadCenter(${section.start}-.0001)`))<.001,'position continuous at joins');assert(Math.abs(run(`roadSlope(${section.start}+.0001)-roadSlope(${section.start}-.0001)`))<1e-6,'tangent continuous at joins');}
+ }
+ console.log(stage+': '+(run('stageLength')/24000).toFixed(2)+' km');
  const layout=Array.from(run('objects')),hazards=layout.filter(o=>['car','cone','barrier'].includes(o.type)),treasures=layout.filter(o=>!hazards.includes(o));
  assert(treasures.length>=hazards.length*4,'four treasures per obstacle');
  assert(hazards.filter(o=>o.type==='car').length>Math.ceil(hazards.length/3),'more traffic cars than the previous layout');

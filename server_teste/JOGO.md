@@ -12,13 +12,16 @@ fontes externas, cadastro ou internet depois de obter esses arquivos.
 
 ## Como brincar
 
-Escolha Jardim das Nuvens (2,5 km), Estrada das Estrelas (3 km), Costa dos
-Golfinhos (3,5 km) ou Vale das Araucárias (3,25 km). Os cenários têm casas e cercas,
+Escolha Jardim das Nuvens (4,58 km), Estrada das Estrelas (5,29 km), Costa dos
+Golfinhos (6,21 km) ou Vale das Araucárias (5,54 km). Os cenários têm casas e cercas,
 prédios iluminados, mar e palmeiras, ou pinheiros e pedras. Colete tesouros e desvie
 dos carros, cones e barreiras. Ao terminar, o próximo mundo começa automaticamente, preservando velocidade,
 ritmo e tesouros acumulados. Depois do quarto mundo, o circuito volta ao primeiro.
 Não há game over.
-Curvas são visíveis desde o início, com transições suaves. Há oito tesouros por
+Curvas são visíveis desde o início, com transições suaves. Retas de cerca de
+208 metros foram inseridas nas transições entre curvas, sem eliminar os trechos
+curvos anteriores. O minimapa no canto superior direito mostra o percurso aberto,
+a posição atual, o trecho percorrido e o fim da fase. Há oito tesouros por
 obstáculo, em grupos separados por trechos livres. Os carros na pista são
 obstáculos parados para preservar essa separação. Há mais carros entre os obstáculos, mantendo livres os grupos de colecionáveis.
 O carro do jogador não emite brilho e tem iluminação reduzida na fase noturna.

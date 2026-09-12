@@ -211,3 +211,15 @@ Inclui todas as melhorias da 1.3.2 anteriormente pendentes. OTA aplicada em
 192.168.0.7, de ota_1 para ota_0. Versão 1.3.3 confirmada após reinício e arquivos
 do jogo conferidos byte a byte. Painel de endereços e abertura do console
 validados no navegador, com controle Sophia por Wi-Fi conectado.
+
+## Versão 1.3.4 — retas adicionais e minimapa
+
+Cada curva original foi preservada, inserindo retas tangentes de 5.000 unidades
+nos pontos de inflexão. Extensões: 110.000, 127.000, 149.000 e 133.000 unidades.
+O minimapa representa o trajeto aberto de cada fase, marca progresso e posição
+e reinicia na passagem automática para o próximo mundo.
+
+Testes verificam continuidade de posição/direção, curvatura zero nas retas e
+preservação da extensão original dos trechos curvos. Revisão visual no navegador.
+OTA instalada em 192.168.0.7, de ota_0 para ota_1, versão 1.3.4 confirmada e
+arquivos do jogo comparados com os fontes ativos após o reinício.
