@@ -344,3 +344,19 @@ cabeçalhos SPDX originais.
 - anúncio, pareamento BLE e envio de relatórios HID verificados;
 - nome Bluetooth configurado como **GamePad Sophia**;
 - calibração fina dos sensores depende da montagem física de cada usuário.
+
+
+## Atualização preparada — inversão do volante
+
+O firmware agora usa `VOLANTE_INVERTIDO=1`: inverte somente o eixo L horizontal
+antes de enviar o relatório HID. R e botões permanecem com o mesmo mapeamento.
+Esta atualização foi compilada, mas ainda não gravada/testada na placa.
+Depois de gravar, desative “Volante invertido” no menu do Órbita para evitar
+inversão dupla (a preferência anterior fica salva no navegador).
+
+Jogo local: http://127.0.0.1:8000/jogo.html. Instruções em `server_teste/JOGO.md`.
+
+LED Bluetooth solicitado: piscar lento conectado e rápido desconectado.
+Implementação pendente da identificação do LED/pino da placa exata. Algumas
+ESP32-S3 Super Mini têm LED azul de carga, sem controle pelo firmware;
+não atribuir um GPIO sem confirmar o circuito.

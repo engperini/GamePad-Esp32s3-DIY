@@ -43,6 +43,9 @@ static const char *TAG = "VOLANTE_HID";
 #define PINO_BOTAO_4_JOYSTICK   GPIO_NUM_7
 #define QUANTIDADE_BOTOES       5
 
+/* Corrige o sentido fisico do potenciometro para todos os jogos/hosts. */
+#define VOLANTE_INVERTIDO       1
+
 /* Use 1 depois de ligar VRX/VRY. Em 0, Rx e Ry ficam centrados e sem ruido. */
 #define JOYSTICK_HABILITADO 1
 
@@ -268,7 +271,10 @@ static void tarefa_leitura_volante(void *pv_parameters)
         const int16_t joystick_x = 0;
         const int16_t joystick_y = 0;
 #endif
-        const int16_t volante_lx = mapear_adc_para_eixo(leitura_volante);
+        const int16_t volante_mapeado = mapear_adc_para_eixo(leitura_volante);
+        /* A faixa e -32767..32767; a negacao cabe em int16_t. */
+        const int16_t volante_lx = VOLANTE_INVERTIDO
+            ? (int16_t)-volante_mapeado : volante_mapeado;
         const uint8_t botoes = ler_botoes();
 
         err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_lx, botoes);
