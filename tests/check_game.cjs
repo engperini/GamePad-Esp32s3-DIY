@@ -6,13 +6,13 @@ const drawing = new Proxy({}, {get:(_,key)=>key==='createLinearGradient'?()=>({a
 const get=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',style:{},width:id==='carPreview'?520:0,height:id==='carPreview'?250:0,addEventListener(){},classList:{toggle(){}},replaceChildren(){},add(){},getContext:()=>drawing,click(){this.onclick();}});return elements.get(id);};
 let pads=[{index:0,id:'GamePad Sophia',mapping:'',axes:[0,0,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))}];
 const context={document:{body:{classList:{toggle(){}}},getElementById:get,addEventListener(){},querySelectorAll:()=>[]},window:{addEventListener(){}},navigator:{getGamepads:()=>pads},localStorage:{getItem:()=>null,setItem(){}},Option:function(){},innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>0},requestAnimationFrame(){},console};
-vm.createContext(context);vm.runInContext(fs.readFileSync('server_teste/jogo.js','utf8'),context);
+vm.createContext(context);vm.runInContext(fs.readFileSync('server_teste/cars.js','utf8'),context);vm.runInContext(fs.readFileSync('server_teste/jogo.js','utf8'),context);
 const run=s=>vm.runInContext(s,context);
 run('start();state.invert=true');
 for(const expected of [1,2,3,1]){pads[0].buttons[0].pressed=true;run('input(1000)');assert.equal(run('state.gear'),expected);run('input(1020)');assert.equal(run('state.gear'),expected,'holding must not repeat');pads[0].buttons[0].pressed=false;run('input(1040)');}
 pads[0].axes=[.6,0,0,.8,-.4];const controls=run('input(2000)');assert(controls.cx>0&&controls.cy<0);assert(run('state.steer')<0,'inversion');
 const steering=run('state.steer');pads[0].axes[3]=-.9;run('input(2020)');assert.equal(run('state.steer'),steering,'camera must not steer');
-run('state.speed=80;state.last=2000');pads[0].buttons[1].pressed=true;run('frame(2050)');assert(run('state.speed')<80,'brake reduces speed');assert.equal(run('state.gear'),1);
+run('state.speed=80;state.last=2000');pads[0].buttons[3].pressed=true;run('frame(2050)');assert(run('state.speed')<80,'brake reduces speed');assert.equal(run('state.gear'),1);
 pads[0].buttons[2].pressed=true;run('input(2100)');assert.equal(run('state.running'),false);const distance=run('state.z');run('frame(2150)');assert.equal(run('state.z'),distance,'pause freezes physics');
 pads[0].axes[4]=.9;run('input(3000)');assert.equal(run('state.selection'),1,'R navigates menu');run('showSettings()');pads[0].axes[4]=0;pads[0].buttons[0].pressed=true;run('input(3020)');assert.equal(run('state.invert'),false,'A activates settings item');
 run('start()');pads=[];run('input(4000)');assert.equal(run('state.running'),false,'disconnect pauses');
@@ -81,7 +81,7 @@ console.log('PASS: no stationary drift, responsive lane change, strong collision
 run("showGarage();$('modelSong').click();$('colorBlue').click();drawGaragePreview(1000)");
 assert.equal(run('state.screen'),'garage');assert.equal(run('state.carModel'),'song');assert.equal(run('state.carColor'),'#65bff0');
 assert.equal(run('menuActions().length'),11);run("$('garageBack').click()");assert.equal(run('state.screen'),'main');
-console.log('PASS: garage models, colors, rotating preview, persistence state and gamepad menu actions.');
+console.log('PASS: garage models, colors, static preview, persistence state and gamepad menu actions.');
 // Wi-Fi source takes precedence and signal loss pauses even with another BLE pad present.
 const wifiPad={index:99,id:'Sophia Wi-Fi',mapping:'standard',axes:[-.8,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))};
 let wireless=wifiPad;
@@ -94,3 +94,34 @@ assert.equal(run('state.running'),false,'Wi-Fi loss pauses despite local pad');
 assert.equal(run('state.device'),null,'no silent BLE fallback');
 delete context.window.SophiaLink;
 console.log('PASS: Wi-Fi game integration and disconnect isolation from other controllers.');
+// Horn and brake must remain independent on raw BLE, Wi-Fi and standard pads.
+for(const mapping of ['', 'standard'])for(const count of [5,17]){
+ pads=[{index:0,id:'Sophia',mapping,axes:[0,0,0,0,0],buttons:Array.from({length:count},()=>({pressed:false}))}];
+ run('input(100000);start();held.clear();state.sound=true;notes=[];lastHorn=-Infinity');
+ pads[0].buttons[1].pressed=true;
+ assert.equal(run('input(100020).brake'),false,'B horn never brakes');
+ assert.deepEqual(Array.from(run('notes')),[349,440],'horn has its own sound');
+ pads[0].buttons[1].pressed=false;pads[0].buttons[mapping==='standard'&&count>=12?11:3].pressed=true;
+ assert.equal(run('input(100040).brake'),true,'right stick click brakes');
+}
+for(const stage of ['day','night','coast','hills']){
+ run(`prepareStage('${stage}');draw(1000)`);
+ assert(run('stageLength')>=60000,'longer tracks');
+ for(let z=0;z<run('stageLength');z+=500){
+  assert(Math.abs(run(`roadSlope(${z})`))<.14,'gentle bends');
+  assert(Math.abs(run(`(roadCenter(${z}+.01)-roadCenter(${z}-.01))/.02-roadSlope(${z})`))<1e-6,'camera tangent matches track');
+ }
+ run('state.completed=true;start()');
+ assert.equal(run('state.stage'),({day:'night',night:'coast',coast:'hills',hills:'day'})[stage]);
+}
+// A preview is time-independent; recoloring actually changes the drawn geometry.
+let renders=0;const drawCar=context.window.SophiaCars.draw;
+context.window.SophiaCars.draw=(...args)=>{renders++;return drawCar(...args);};
+run("showGarage();previewKey='';drawGaragePreview(0);drawGaragePreview(5000)");assert.equal(renders,1);
+run("$('colorYellow').click();drawGaragePreview(5100)");assert.equal(renders,2);
+const source=fs.readFileSync('server_teste/jogo.js','utf8');
+for(const [saved,expected] of [[{},true],[{sound:false},true],[{sound:false,soundRevision:2},false]]){
+ const fresh={...context,window:{addEventListener(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(){}}};
+ vm.createContext(fresh);vm.runInContext(source,fresh);assert.equal(vm.runInContext('state.sound',fresh),expected);
+}
+console.log('PASS: independent horn/R brake across transports, four longer gentle tracks, static preview and sound defaults.');

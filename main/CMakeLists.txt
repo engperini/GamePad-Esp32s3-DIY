@@ -6,7 +6,7 @@ idf_component_register(
 
 set(WEB_ROOT "${CMAKE_CURRENT_LIST_DIR}/../server_teste")
 set(WEB_HEADER "${CMAKE_CURRENT_BINARY_DIR}/web_assets.h")
-set(WEB_FILES jogo.html jogo.css jogo.js sophia-link.js console.html console.js index.html)
+set(WEB_FILES jogo.html jogo.css jogo.js cars.js sophia-link.js console.html console.js index.html)
 set(WEB_INPUTS)
 foreach(FILE ${WEB_FILES})
     list(APPEND WEB_INPUTS "${WEB_ROOT}/${FILE}")

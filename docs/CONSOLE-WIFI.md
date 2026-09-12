@@ -161,3 +161,20 @@ O status confirmou firmware 1.2.0, modo híbrido e servidor ativo depois do rein
 A garagem foi aberta e revisada no Chrome diretamente a partir do ESP32; a conexão
 `Sophia · Wi-Fi` voltou após a janela normal de reconexão. Os testes de física,
 garagem, colecionáveis, transporte Wi-Fi, HID e partições passaram.
+
+## Atualização 1.3.0 — quatro percursos e garagem estática
+
+Prévia fixa em três quartos, com carrocerias projetadas em Canvas, rodas,
+vidros, lanternas e seis cores. O arquivo cars.js é incorporado à mesma imagem
+OTA do jogo. Som ativado por padrão; B buzina e o clique R freia, preservando
+os eixos de câmera e o relatório Bluetooth do firmware.
+
+Quatro pistas de 2,5 a 3,5 km, curvas suaves e cenários laterais com casas,
+cercas, prédios, mar, palmeiras, árvores, pedras e defensas.
+
+Aplicada por OTA na LAN em 192.168.0.24, de ota_1 para ota_0. Status confirmou
+1.3.0 e modo híbrido após o reinício. HTML, CSS, jogo.js, cars.js e sophia-link.js
+servidos pela placa foram comparados byte a byte com os arquivos ativos.
+Imagem de 1.112.128 bytes, com 43% da partição OTA livre. Testes de física,
+controles, som, quatro pistas, garagem estática, transporte, HID e partições
+passaram; garagem e costa revisadas no navegador.

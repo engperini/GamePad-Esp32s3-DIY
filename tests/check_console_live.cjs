@@ -10,7 +10,7 @@ async function connect(){return new Promise((resolve,reject)=>{const ws=new WebS
 async function sample(ws){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('WS timeout')),2500);ws.onmessage=e=>{clearTimeout(timer);resolve(JSON.parse(e.data));};ws.send('?');});}
 (async()=>{
  const status=await (await request('/api/status')).json(); assert.equal(status.device,'sophia-console');
- for(const name of ['jogo.html','jogo.css','jogo.js','sophia-link.js','console.html','console.js','index.html']){
+ for(const name of ['jogo.html','jogo.css','jogo.js','cars.js','sophia-link.js','console.html','console.js','index.html']){
   const res=await request('/'+name);assert.equal(res.status,200);assert.equal(res.headers.get('content-encoding'),'gzip');
   assert.deepEqual(Buffer.from(await res.arrayBuffer()),fs.readFileSync(path.join(root,'server_teste',name)));
  }

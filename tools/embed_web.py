@@ -5,7 +5,7 @@ from pathlib import Path
 
 root, output = map(Path, sys.argv[1:])
 files = [('jogo.html', 'text/html; charset=utf-8'), ('jogo.css', 'text/css'),
-         ('jogo.js', 'text/javascript'), ('sophia-link.js', 'text/javascript'),
+         ('jogo.js', 'text/javascript'), ('cars.js', 'text/javascript'), ('sophia-link.js', 'text/javascript'),
          ('console.html', 'text/html; charset=utf-8'), ('console.js', 'text/javascript'),
          ('index.html', 'text/html; charset=utf-8')]
 lines = ['/* Generated: edit server_teste sources instead. */',
