@@ -49,8 +49,8 @@ run('state.x=750;state.speed=0;step(.05,{brake:true,cx:0,cy:0})');assert.equal(r
 run("reset();objects=[{type:'cone',z:100,x:0,done:false}];state.speed=55;state.gear=1;state.z=60;step(.05,neutral)");assert.equal(run('state.bumps'),1);assert(run('state.speed')>0,'collision does not trap car');
 run("objects=[{type:'star',z:state.z+30,x:state.x,done:false}];step(.05,neutral)");assert.equal(run('state.stars'),1);
 run('step(.05,neutral)');assert.equal(run('state.stars'),1,'star only counts once');
-run('state.z=stageLength-1;state.speed=55;step(.05,neutral)');assert.equal(run('state.completed'),true);assert.equal(run('state.running'),false);
-run('start()');assert.equal(run('state.stage'),'night');assert.equal(run('state.z'),0);assert.equal(run('state.stars'),0);
+run('state.z=stageLength-1;state.speed=55;step(.05,neutral)');assert.equal(run('state.completed'),false);assert.equal(run('state.running'),true);
+assert.equal(run('state.stage'),'night');assert.equal(run('state.z'),0);assert.equal(run('state.stars'),1);assert.equal(run('state.gear'),1);assert.equal(run('state.speed'),55);
 assert(Math.abs(run('roadSlope(0)'))<.07,'gentle curves');
 run('menu(true)');const paused=run('state.elapsed');run('step(.05,neutral)');assert.equal(run('state.elapsed'),paused);
 console.log('PASS: shoulder recovery from rest, braking, collision, collectible, stage completion and transition.');
@@ -109,13 +109,14 @@ for(const stage of ['day','night','coast','hills']){
  assert(run('stageLength')>=60000,'longer tracks');
  const layout=Array.from(run('objects')),hazards=layout.filter(o=>['car','cone','barrier'].includes(o.type)),treasures=layout.filter(o=>!hazards.includes(o));
  assert(treasures.length>=hazards.length*4,'four treasures per obstacle');
+ assert(hazards.filter(o=>o.type==='car').length>Math.ceil(hazards.length/3),'more traffic cars than the previous layout');
  for(const treasure of treasures)for(const obstacle of hazards)assert(Math.abs(treasure.z-obstacle.z)>=1400,'clear space around obstacles');
  assert(Math.abs(run('projectRoad(2000).x-projectRoad(0).x'))>45,'bend visible from the start');
  for(let z=0;z<run('stageLength');z+=500){
   assert(Math.abs(run(`roadSlope(${z})`))<.86,'bounded bends');
   assert(Math.abs(run(`(roadCenter(${z}+.01)-roadCenter(${z}-.01))/.02-roadSlope(${z})`))<1e-6,'camera tangent matches track');
  }
- run('state.completed=true;start()');
+ run('start();state.stars=12;state.gear=3;state.speed=140;state.z=stageLength-1;step(.05,neutral)');assert.equal(run('state.running'),true);assert.equal(run('state.stars'),12);assert.equal(run('state.gear'),3);assert.equal(run('state.speed'),140);
  assert.equal(run('state.stage'),({day:'night',night:'coast',coast:'hills',hills:'day'})[stage]);
 }
 // A preview is time-independent; recoloring actually changes the drawn geometry.

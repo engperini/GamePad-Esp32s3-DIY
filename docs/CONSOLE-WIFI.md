@@ -190,3 +190,13 @@ Buzina com dois bipes de 1.046 Hz, separados por silêncio.
 Testes do jogo, transporte e partições passaram; garagem e curva inicial
 conferidas no navegador. OTA aplicada em 192.168.0.24, de ota_0 para ota_1;
 status confirmou 1.3.1 e arquivos servidos idênticos ao código ativo.
+
+## Versão 1.3.2 — corrida contínua
+
+Carro noturno sem halo luminoso e com brilho reduzido. Mais carros na distribuição
+dos obstáculos, mantendo a separação dos colecionáveis. A passagem entre os quatro
+mundos é automática, inclusive do último para o primeiro, preservando velocidade,
+ritmo, posição lateral e contadores da sessão. Pausa e reinício continuam manuais.
+
+Build, testes do jogo/transporte e partições aprovados; iluminação noturna revisada
+no navegador. OTA pendente: tentativa em 192.168.0.24 não estabeleceu conexão.
