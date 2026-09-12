@@ -75,3 +75,15 @@ run(`var notes=[];audioContext={state:'running',currentTime:0,destination:{},cre
 assert.deepEqual(Array.from(run('notes')),[880,1174]);run('notes=[];chime(false)');assert.deepEqual(Array.from(run('notes')),[125]);
 run('notes=[];state.sound=false;chime(true)');assert.equal(run('notes.length'),0);
 console.log('PASS: no stationary drift, responsive lane change, strong collisions/recovery, distinct sounds, no misleading ball.');
+// Wi-Fi source takes precedence and signal loss pauses even with another BLE pad present.
+const wifiPad={index:99,id:'Sophia Wi-Fi',mapping:'standard',axes:[-.8,0,0,0],buttons:Array.from({length:5},()=>({pressed:false,value:0}))};
+let wireless=wifiPad;
+context.window.SophiaLink={wifiSelected:()=>true,getGamepad:()=>wireless,status:'Sem sinal'};
+pads=[{...wifiPad,index:0,id:'Another pad',axes:[.8,0,0,0]}];
+run('input(89900);start();state.invert=false;input(90000)');
+assert(run('state.steer')<0,'Wi-Fi must override local pad');
+wireless=null;run('input(90020)');
+assert.equal(run('state.running'),false,'Wi-Fi loss pauses despite local pad');
+assert.equal(run('state.device'),null,'no silent BLE fallback');
+delete context.window.SophiaLink;
+console.log('PASS: Wi-Fi game integration and disconnect isolation from other controllers.');

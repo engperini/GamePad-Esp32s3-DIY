@@ -7,6 +7,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
+#include "sophia_console.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -123,6 +125,7 @@ typedef struct {
 
 static local_param_t s_ble_hid_param;
 static adc_oneshot_unit_handle_t s_adc1_handle;
+static atomic_bool s_hid_ready;
 
 static void adc_iniciar(void)
 {
@@ -277,9 +280,12 @@ static void tarefa_leitura_volante(void *pv_parameters)
             ? (int16_t)-volante_mapeado : volante_mapeado;
         const uint8_t botoes = ler_botoes();
 
-        err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_lx, botoes);
-        if (err != ESP_OK) {
-            ESP_LOGW(TAG, "Falha ao enviar relatorio HID: %s", esp_err_to_name(err));
+        sophia_controls_publish(volante_lx, joystick_x, joystick_y, botoes);
+        if (atomic_load(&s_hid_ready)) {
+            err = enviar_relatorio_gamepad(joystick_x, joystick_y, volante_lx, botoes);
+            if (err != ESP_OK) {
+                ESP_LOGD(TAG, "Falha ao enviar relatorio HID: %s", esp_err_to_name(err));
+            }
         }
 
         const uint8_t botoes_alterados = botoes ^ botoes_estado_anterior;
@@ -299,7 +305,7 @@ static void tarefa_leitura_volante(void *pv_parameters)
     }
 }
 
-void ble_hid_task_start_up(void)
+static void sensores_start(void)
 {
     if (s_ble_hid_param.task_hdl != NULL) {
         return;
@@ -315,12 +321,15 @@ void ble_hid_task_start_up(void)
     }
 }
 
+/* Existing NimBLE encryption/resume callbacks still enable the same HID stream.
+ * Sampling itself remains alive so the console works without a BLE host. */
+void ble_hid_task_start_up(void)
+{
+    atomic_store(&s_hid_ready, true);
+}
 static void tarefa_parar(void)
 {
-    if (s_ble_hid_param.task_hdl != NULL) {
-        vTaskDelete(s_ble_hid_param.task_hdl);
-        s_ble_hid_param.task_hdl = NULL;
-    }
+    atomic_store(&s_hid_ready, false);
 }
 
 static void ble_hidd_event_callback(void *handler_args, esp_event_base_t base,
@@ -403,6 +412,7 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
     adc_iniciar();
+    sensores_start();
     ESP_LOGI(TAG, "Controles: L=GPIO1/Y=0 R=GPIO5/6 A/B/X=GPIO2/3/4 SW=GPIO7 BOOT=GPIO0");
 
     ESP_LOGI(TAG, "Inicializando BLE HID com NimBLE");
@@ -426,4 +436,5 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_nimble_enable(ble_hid_device_host_task));
 
     ESP_LOGI(TAG, "GamePad Sophia pronto; aguardando pareamento BLE");
+    ESP_ERROR_CHECK(sophia_console_start());
 }

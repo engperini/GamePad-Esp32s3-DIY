@@ -8,7 +8,7 @@ const targets=[0,55,95,140],stageLength=24000;
 let objects=[];
 function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({invert:state.invert,deadzone:state.deadzone,sensitivity:state.sensitivity,sound:state.sound}));}catch{}}
 function settings(){$('invert').textContent=`Volante invertido: ${state.invert?'SIM':'NÃO'}`;$('sensitivity').textContent=`Sensibilidade: ${state.sensitivity.toFixed(1)}×`;$('deadButton').textContent=`Zona morta: ${Math.round(state.deadzone*100)}%`;$('sound').textContent=`Sons: ${state.sound?'SIM':'NÃO'}`;}
-function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','back']:['start','day','night','openSettings','reset']).map($);}
+function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','help','back']:['start','day','night','openSettings','reset']).map($);}
 function highlight(scroll=false){menuActions().forEach((b,i)=>{b.classList.toggle('selected',i===state.selection);if(scroll&&i===state.selection)b.scrollIntoView?.({block:'nearest'});});}
 function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} estrelas e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue as estrelas e desvie dos carros, cones e barreiras. Se sair da pista, nós ajudamos você a voltar.';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';highlight();}}
 function showSettings(){state.screen='settings';state.selection=0;menu(true);}
@@ -34,6 +34,8 @@ function chime(good){
   osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.25);
  }
 }
+$('source').onclick=()=>{const link=window.SophiaLink;if(!link)return;const sources=['auto','local','wifi'];link.setSource(sources[(sources.indexOf(link.source)+1)%sources.length]);$('source').textContent='Controle: '+({auto:'Automático',local:'Bluetooth / teclado',wifi:'Wi-Fi do ESP32'})[link.source];};
+$('help').onclick=()=>{$('consoleHelp').hidden=!$('consoleHelp').hidden;if(!$('consoleHelp').hidden)$('consoleHelp').scrollIntoView?.({block:'nearest'});};
 $('start').onclick=start;$('reset').onclick=reset;$('openSettings').onclick=showSettings;$('back').onclick=back;
 for(const stage of ['day','night'])$(stage).onclick=()=>{prepareStage(stage);state.selection=0;menu(true);};
 $('sensitivity').onclick=()=>{const levels=[.6,1,1.4,1.8];state.sensitivity=levels[(levels.indexOf(state.sensitivity)+1)%levels.length];settings();save();};
@@ -48,6 +50,7 @@ window.addEventListener('blur',suspend);document.addEventListener('visibilitycha
 let signature='';
 function input(now){
  let pads=[];try{pads=navigator.getGamepads?Array.from(navigator.getGamepads()).filter(Boolean):[];}catch{}
+ const link=window.SophiaLink;if(link?.wifiSelected()){const wireless=link.getGamepad();pads=wireless?[wireless]:[];}
  const sig=pads.map(p=>p.index+':'+p.id).join('|');
  if(sig!==signature){const previous=$('gamepad').value;$('gamepad').replaceChildren(new Option('Seleção automática',''));pads.forEach(p=>$('gamepad').add(new Option(p.id,String(p.index))));if(pads.some(p=>String(p.index)===previous))$('gamepad').value=previous;signature=sig;}
  const gp=pads.find(p=>String(p.index)===$('gamepad').value)||pads.find(p=>/Sophia|Volante DIY|16c0/i.test(p.id))||pads[0];
@@ -60,7 +63,7 @@ function input(now){
  const backPressed=edge('b',b);
  const clickW=keyClicks.delete('KeyW'),clickEsc=keyClicks.delete('Escape'),clickEnter=keyClicks.delete('Enter');
  const accelerate=edge('a',a||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
- $('connection').textContent=gp?'● '+gp.id:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
+ $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
  if((pause||backPressed)&&!state.running&&state.screen==='settings'){back();return {brake:false,cx:0,cy:0};}
  if(pause&&state.started){state.screen='main';menu(state.running);}
  if(!state.running){const nav=camY>.5||keys.has('ArrowDown')?1:camY<-.5||keys.has('ArrowUp')?-1:0;if(nav&&now>state.navTime){state.selection=(state.selection+nav+menuActions().length)%menuActions().length;highlight(true);state.navTime=now+260;}if(!nav)state.navTime=0;if(accelerate||enter)menuActions()[state.selection].click();return {brake:false,cx:0,cy:0};}

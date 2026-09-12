@@ -369,11 +369,11 @@ não atribuir um GPIO sem confirmar o circuito.
 ## Órbita Kids
 
 O jogo local agora tem duas fases (Jardim das Nuvens e Estrada das Estrelas),
-curvas suaves, tráfego, cones/bolas, estrelas e chegada. Sair da pista não prende
+curvas suaves, tráfego, cones/barreiras, estrelas e chegada. Sair da pista não prende
 o carro: o acostamento reduz o ritmo e auxilia o retorno. Configurações de controle
 ficam em menu próprio. Há teclado, gamepad e botões de toque, com sons opcionais.
 
 Uso: [server_teste/JOGO.md](server_teste/JOGO.md).
-Proposta de console independente: [docs/CONSOLE-WIFI.md](docs/CONSOLE-WIFI.md).
-Servidor/controles por Wi-Fi no ESP32 ainda não implementados; o firmware BLE
-validado não foi alterado nesta etapa. Android/TV requerem validação nos aparelhos.
+Console independente: [docs/CONSOLE-WIFI.md](docs/CONSOLE-WIFI.md).
+Servidor HTTP, controles WebSocket, modos AP/STA/AP+STA e atualização OTA implementados.
+O mapeamento BLE foi preservado. Android/TV requerem validação nos aparelhos.

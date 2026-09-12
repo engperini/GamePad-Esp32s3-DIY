@@ -44,8 +44,8 @@ de validação no aparelho real. Gamepad Bluetooth exige navegador/host compatí
 e contexto seguro (HTTPS ou localhost). O endereço 127.0.0.1 é do aparelho que
 abre o navegador: não acessa o PC quando digitado no celular.
 
-Para levar a outro servidor, copie os três arquivos juntos e abra jogo.html.
+Para levar a outro servidor, copie a pasta server_teste e abra jogo.html.
 Para um console no ESP32, veja ../docs/CONSOLE-WIFI.md. O servidor e o transporte
-WebSocket no firmware ainda não estão implementados nesta versão.
+WebSocket estão implementados; a ajuda no menu explica AP, rede local e OTA.
 
 Verificações: node tests/check_game.cjs e node tests/check_page.cjs, na raiz.
