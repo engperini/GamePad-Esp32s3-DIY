@@ -61,6 +61,11 @@ sendo obstáculos.
 
 ## Portabilidade
 
+Em Configurações, o painel **Seu console na rede** mostra os IPs atuais do modo
+direto e do roteador. O botão **Configurações avançadas · Console** abre a página
+de Wi-Fi e OTA sem digitar endereço. Os IPs são consultados na placa, não fixados
+no jogo; o painel também informa quando uma das conexões está desativada.
+
 O pacote é web estático, não um APK/PWA instalado. Android e TVs ainda precisam
 de validação no aparelho real. Gamepad Bluetooth exige navegador/host compatíveis
 e contexto seguro (HTTPS ou localhost). O endereço 127.0.0.1 é do aparelho que

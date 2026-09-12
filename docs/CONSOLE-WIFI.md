@@ -200,3 +200,14 @@ ritmo, posição lateral e contadores da sessão. Pausa e reinício continuam ma
 
 Build, testes do jogo/transporte e partições aprovados; iluminação noturna revisada
 no navegador. OTA pendente: tentativa em 192.168.0.24 não estabeleceu conexão.
+
+## Versão 1.3.3 — console acessível pelo jogo
+
+Configurações mostra os endereços atuais do Wi-Fi direto e da rede do roteador,
+consultados em /api/status a cada abertura. Inclui botão Configurações avançadas
+que abre console.html no mesmo endereço, também acessível pelo gamepad.
+
+Inclui todas as melhorias da 1.3.2 anteriormente pendentes. OTA aplicada em
+192.168.0.7, de ota_1 para ota_0. Versão 1.3.3 confirmada após reinício e arquivos
+do jogo conferidos byte a byte. Painel de endereços e abertura do console
+validados no navegador, com controle Sophia por Wi-Fi conectado.

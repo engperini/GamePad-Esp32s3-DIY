@@ -15,10 +15,10 @@ const trackIds=Object.keys(tracks);let stageLength=tracks.day.length;
 let objects=[];
 function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({invert:state.invert,deadzone:state.deadzone,sensitivity:state.sensitivity,sound:state.sound,soundRevision:2,carModel:state.carModel,carColor:state.carColor}));}catch{}}
 function settings(){$('invert').textContent=`Volante invertido: ${state.invert?'SIM':'NÃO'}`;$('sensitivity').textContent=`Sensibilidade: ${state.sensitivity.toFixed(1)}×`;$('deadButton').textContent=`Zona morta: ${Math.round(state.deadzone*100)}%`;$('sound').textContent=`Sons: ${state.sound?'SIM':'NÃO'}`;}
-function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','help','back']:state.screen==='garage'?['modelRenegade','modelSong','modelSport','modelBuggy','colorWhite','colorGray','colorPink','colorBlue','colorGreen','colorYellow','garageBack']:['start','day','night','coast','hills','customize','openSettings','reset']).map($);}
+function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','advanced','help','back']:state.screen==='garage'?['modelRenegade','modelSong','modelSport','modelBuggy','colorWhite','colorGray','colorPink','colorBlue','colorGreen','colorYellow','garageBack']:['start','day','night','coast','hills','customize','openSettings','reset']).map($);}
 function highlight(scroll=false){menuActions().forEach((b,i)=>{b.classList.toggle('selected',i===state.selection);if(scroll&&i===state.selection)b.scrollIntoView?.({block:'nearest'});});}
 function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('garageMenu').hidden=state.screen!=='garage';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} tesouros e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue estrelas, corações, doces e cristais. Desvie dos obstáculos e divirta-se!';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';updateGarage();highlight();}}
-function showSettings(){state.screen='settings';state.selection=0;menu(true);}
+function showSettings(){state.screen='settings';state.selection=0;menu(true);refreshConsoleInfo();}
 function showGarage(){state.screen='garage';state.selection=0;menu(true);}
 function back(){state.screen='main';state.selection=0;menu(true);}
 function prepareStage(stage){state.stage=tracks[stage]?stage:'day';const track=tracks[state.stage];stageLength=track.length;Object.assign(state,{z:0,x:0,speed:0,gear:0,yaw:0,pitch:0,steer:0,turnAngle:0,impact:0,stars:0,passed:0,bumps:0,elapsed:0,shield:0,completed:false,started:false});objects=[];const treasures=['star','heart','candy','gem'];for(let i=0,z=1800;z<stageLength-5000;i++,z+=5500){for(let j=0;j<8;j++)objects.push({z:z+j*350,x:[-320,0,320][(i+Math.floor(j/2))%3],type:treasures[(i+j)%4],done:false});objects.push({z:z+4000,x:[-320,0,320][(i+2)%3],type:['car','cone','car','barrier','car'][i%5],done:false});}document.body.classList.toggle('day-mode',state.stage!=='night');for(const id of trackIds)$(id).classList.toggle('chosen',id===state.stage);$('stageName').textContent='0'+(trackIds.indexOf(state.stage)+1)+' · '+track.name;}
@@ -49,6 +49,21 @@ function chime(good){
  }
 }
 $('source').onclick=()=>{const link=window.SophiaLink;if(!link)return;const sources=['auto','local','wifi'];link.setSource(sources[(sources.indexOf(link.source)+1)%sources.length]);$('source').textContent='Controle: '+({auto:'Automático',local:'Bluetooth / teclado',wifi:'Wi-Fi do ESP32'})[link.source];};
+$('advanced').onclick=()=>{window.location.assign('console.html');};
+function renderConsoleInfo(status){
+ const validIp=value=>typeof value==='string'&&/^(\d{1,3}\.){3}\d{1,3}$/.test(value)&&value.split('.').every(n=>Number(n)<=255)&&value!=='0.0.0.0';
+ const address=(id,ip,enabled,unavailable)=>{const el=$(id);el.textContent=enabled&&validIp(ip)?'http://'+ip+'/':unavailable;if(enabled&&validIp(ip)){el.href='http://'+ip+'/';}else el.removeAttribute('href');};
+ $('consoleNetwork').textContent='Wi-Fi direto: '+(status.ap||'Sophia-Play');
+ address('consoleDirect',status.ap_ip,status.ap_on,'Wi-Fi direto desativado');
+ address('consoleLan',status.ip,status.connected,'Não conectado ao roteador');
+ $('consoleCurrent').textContent='Você está acessando por: '+window.location.host;
+}
+async function refreshConsoleInfo(){
+ if(!window.fetch)return;
+ $('consoleCurrent').textContent='Consultando endereços do ESP32…';
+ try{const response=await window.fetch('/api/status',{cache:'no-store',signal:AbortSignal.timeout(3000)});if(!response.ok)throw Error();const status=await response.json();if(status.device!=='sophia-console')throw Error();renderConsoleInfo(status);}
+ catch{$('consoleCurrent').textContent='ESP32 indisponível neste endereço. No Wi-Fi direto, abra http://192.168.4.1/';$('consoleNetwork').textContent='Endereços não confirmados';for(const id of ['consoleDirect','consoleLan']){$(id).textContent='Indisponível';$(id).removeAttribute('href');}}
+}
 $('help').onclick=()=>{$('consoleHelp').hidden=!$('consoleHelp').hidden;if(!$('consoleHelp').hidden)$('consoleHelp').scrollIntoView?.({block:'nearest'});};
 $('start').onclick=start;$('reset').onclick=reset;$('customize').onclick=showGarage;$('openSettings').onclick=showSettings;$('back').onclick=back;$('garageBack').onclick=back;
 const modelButtons={modelRenegade:['renegade','#f5f4ec'],modelSong:['song','#8d98a5'],modelSport:['sport','#f28fac'],modelBuggy:['buggy','#ffd76e']};

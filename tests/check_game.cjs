@@ -124,6 +124,15 @@ let renders=0;const drawCar=context.window.SophiaCars.side;
 context.window.SophiaCars.side=(...args)=>{renders++;return drawCar(...args);};
 run("showGarage();previewKey='';drawGaragePreview(0);drawGaragePreview(5000)");assert.equal(renders,1);
 run("$('colorYellow').click();drawGaragePreview(5100)");assert.equal(renders,2);
+let destination='';context.window.location={host:'192.168.4.1',assign:url=>destination=url};
+for(const id of ['consoleDirect','consoleLan'])get(id).removeAttribute=function(name){delete this[name];};
+run("renderConsoleInfo({ap:'Sophia-Play',ap_on:true,ap_ip:'192.168.4.1',connected:true,ip:'192.168.0.7'})");
+assert.equal(get('consoleLan').href,'http://192.168.0.7/');assert.equal(get('consoleDirect').href,'http://192.168.4.1/');
+assert(get('consoleCurrent').textContent.includes('192.168.4.1'),'show current AP access alongside LAN address');
+run("renderConsoleInfo({ap_on:false,connected:false});$('advanced').click()");
+assert.equal(get('consoleLan').href,undefined);assert.equal(get('consoleDirect').href,undefined);assert.equal(destination,'console.html');
+run('showSettings()');assert(Array.from(run('menuActions()')).includes(get('advanced')),'console accessible by gamepad');
+console.log('PASS: dynamic AP/LAN addresses, disconnected state and direct console navigation.');
 const source=fs.readFileSync('server_teste/jogo.js','utf8');
 for(const [saved,expected] of [[{},true],[{sound:false},true],[{sound:false,soundRevision:2},false]]){
  const fresh={...context,window:{addEventListener(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(){}}};
