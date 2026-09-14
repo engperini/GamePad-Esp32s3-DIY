@@ -109,10 +109,11 @@ function input(now){
  const [rx,ry]=gp?rightIndices(gp):[2,3];
  const raw=gp?.axes[0]||0, camX=gp?.axes[rx]||0,camY=gp?.axes[ry]||0;
  const pressed=i=>Boolean(gp?.buttons[i]?.pressed||gp?.buttons[i]?.value>.5);
- const a=pressed(0),b=pressed(1),x=pressed(2),rClick=pressed(gp?.mapping==='standard'&&gp.buttons.length>=12?11:3);
+ const standard=gp?.mapping==='standard'&&gp.buttons.length>=12,rawHid=!standard&&gp?.buttons.length>=15;
+ const a=pressed(0),b=pressed(1),x=pressed(rawHid?3:2),rClick=pressed(standard?11:rawHid?14:3),startButton=pressed(standard?9:rawHid?11:4);
  const backPressed=edge('b',b),hornPressed=edge('horn',b||keys.has('KeyH')||touch.horn);keyClicks.delete('KeyH');
  const clickW=keyClicks.delete('KeyW'),clickEsc=keyClicks.delete('Escape'),clickEnter=keyClicks.delete('Enter');
- const accelerate=edge('a',a||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
+ const accelerate=edge('a',a||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||startButton||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
  $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}     R ${rClick?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
  if((pause||backPressed)&&!state.running&&state.screen!=='main'){back();return {brake:false,cx:0,cy:0};}
  if(pause&&state.started){state.screen='main';menu(state.running);}

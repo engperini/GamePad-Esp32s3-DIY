@@ -223,3 +223,16 @@ Testes verificam continuidade de posição/direção, curvatura zero nas retas e
 preservação da extensão original dos trechos curvos. Revisão visual no navegador.
 OTA instalada em 192.168.0.7, de ota_0 para ota_1, versão 1.3.4 confirmada e
 arquivos do jogo comparados com os fontes ativos após o reinício.
+
+## Versão 1.4.0 — A, B, X, R3 e Start
+
+Botões Bluetooth usam slots HID 1, 2, 4, 15 e 12, respectivamente. Relatório de
+10 bytes, quatro eixos preservados. Wi-Fi conserva o protocolo anterior de cinco
+bits físicos. Jogo e testador reconhecem HID bruto e Gamepad API padrão.
+Mapeamento editável e calibração explicados em MAPEAMENTO.md.
+
+OTA instalada em 192.168.0.23 de ota_1 para ota_0; versão e arquivos confirmados.
+Build, descritor compilado, partições, transporte e controles do jogo testados.
+Reconhecimento nativo na TV requer teste após esquecer/parear novamente o controle.
+O salto do volante relatado no jogo externo ainda está em investigação; a resposta
+linear e a inversão do eixo permanecem inalteradas.

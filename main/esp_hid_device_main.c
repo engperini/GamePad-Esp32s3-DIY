@@ -65,7 +65,14 @@ static const char *TAG = "VOLANTE_HID";
 #define INTERVALO_MS      20
 #define HID_BATTERY_LEVEL 100
 
-/* Report ID 1: L: volante X/Y=0; R: joystick Rx/Ry; 5 botoes. */
+/* MAPEAMENTO EDITAVEL: usos HID Button (nao indices JavaScript).
+ * GPIO2=A(1), GPIO3=B(2), GPIO4=X(4), GPIO7=R3(15), BOOT=Start(12).
+ * A ordem corresponde aos bits fisicos retornados por ler_botoes().
+ * Mantenha cada uso entre 1 e 15. Slots sem botao ficam soltos.
+ */
+static const uint8_t botoes_usos_hid[QUANTIDADE_BOTOES] = {1, 2, 4, 15, 12};
+
+/* Report ID 1: quatro eixos + 15 slots padrao HID e um bit reservado. */
 static const unsigned char gamepad_report_map[] = {
     0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
     0x09, 0x05,       /* USAGE (Game Pad) */
@@ -85,20 +92,20 @@ static const unsigned char gamepad_report_map[] = {
     0xC0,             /*   END_COLLECTION */
     0x05, 0x09,       /*   USAGE_PAGE (Button) */
     0x19, 0x01,       /*   USAGE_MINIMUM (Button 1) */
-    0x29, 0x05,       /*   USAGE_MAXIMUM (Button 5) */
+    0x29, 0x0F,       /*   USAGE_MAXIMUM (Button 15 / R3) */
     0x15, 0x00,       /*   LOGICAL_MINIMUM (0) */
     0x25, 0x01,       /*   LOGICAL_MAXIMUM (1) */
     0x75, 0x01,       /*   REPORT_SIZE (1) */
-    0x95, 0x05,       /*   REPORT_COUNT (5 buttons) */
+    0x95, 0x0F,       /*   REPORT_COUNT (15 buttons) */
     0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
-    0x75, 0x03,       /*   REPORT_SIZE (3), padding */
+    0x75, 0x01,       /*   REPORT_SIZE (1), padding */
     0x95, 0x01,       /*   REPORT_COUNT (1) */
     0x81, 0x03,       /*   INPUT (Const,Var,Abs) */
     0xC0              /* END_COLLECTION */
 };
 
 #define GAMEPAD_REPORT_ID  1
-#define GAMEPAD_REPORT_LEN 9
+#define GAMEPAD_REPORT_LEN 10
 
 static esp_hid_raw_report_map_t ble_report_maps[] = {
     {
@@ -226,6 +233,10 @@ static esp_err_t enviar_relatorio_gamepad(int16_t joystick_x, int16_t joystick_y
     const uint16_t joystick_x_bits = (uint16_t)joystick_x;
     const uint16_t joystick_y_bits = (uint16_t)joystick_y;
     const uint16_t volante_bits = (uint16_t)volante_lx;
+    uint16_t botoes_hid = 0;
+    for (int i = 0; i < QUANTIDADE_BOTOES; i++) {
+        if (botoes & (1U << i)) botoes_hid |= 1U << (botoes_usos_hid[i] - 1);
+    }
     uint8_t buffer[GAMEPAD_REPORT_LEN] = {
         (uint8_t)(volante_bits & 0xFF), /* L horizontal */
         (uint8_t)(volante_bits >> 8),
@@ -234,7 +245,7 @@ static esp_err_t enviar_relatorio_gamepad(int16_t joystick_x, int16_t joystick_y
         (uint8_t)(joystick_x_bits >> 8),
         (uint8_t)(joystick_y_bits & 0xFF),
         (uint8_t)(joystick_y_bits >> 8),
-        botoes,
+        (uint8_t)botoes_hid, (uint8_t)(botoes_hid >> 8),
     };
 
     return esp_hidd_dev_input_set(s_ble_hid_param.hid_dev, 0,

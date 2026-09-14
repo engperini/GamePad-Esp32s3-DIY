@@ -144,8 +144,10 @@ a inicialização coloca o ESP32-S3 no modo de gravação.
 | Botão externo GPIO4 | X / Botão 3 |
 | Pressionar o joystick | Botão 4 |
 
-O relatório HID usa Report ID 1, quatro eixos assinados de 16 bits e cinco bits
-de botão, mais três bits de padding (9 bytes: X, Y=0, Rx, Ry, botões). Uma atualização é enviada a cada 20 ms.
+O relatório HID usa Report ID 1, quatro eixos assinados de 16 bits e quinze slots
+de botão, mais um bit de padding (10 bytes: X, Y=0, Rx, Ry, botões). Uma atualização é enviada a cada 20 ms.
+Os cinco botões físicos correspondem a A, B, X, R3 e Start. Veja
+[como alterar o mapeamento](docs/MAPEAMENTO.md).
 
 A/B/X correspondem aos botões HID 1/2/3. Jogos podem exigir atribuir esses
 botões e os eixos nas configurações do controle; o dispositivo continua BLE HID.

@@ -101,8 +101,14 @@ for(const mapping of ['', 'standard'])for(const count of [5,17]){
  pads[0].buttons[1].pressed=true;
  assert.equal(run('input(100020).brake'),false,'B horn never brakes');
  assert.deepEqual(Array.from(run('notes')),[1046,1046],'horn has its own sound');
- pads[0].buttons[1].pressed=false;pads[0].buttons[mapping==='standard'&&count>=12?11:3].pressed=true;
+ pads[0].buttons[1].pressed=false;pads[0].buttons[mapping==='standard'&&count>=12?11:count>=15?14:3].pressed=true;
  assert.equal(run('input(100040).brake'),true,'right stick click brakes');
+ pads[0].buttons.forEach(b=>b.pressed=false);run('input(100060);start()');
+ pads[0].buttons[mapping==='standard'&&count>=12?9:count>=15?11:4].pressed=true;
+ run('input(100080)');assert.equal(run('state.running'),false,'Start pauses on each transport');
+ pads[0].buttons.forEach(b=>b.pressed=false);run('input(100100);start()');
+ pads[0].buttons[mapping!=='standard'&&count>=15?3:2].pressed=true;
+ run('input(100120)');assert.equal(run('state.running'),false,'X keeps its action on each transport');
 }
 for(const stage of ['day','night','coast','hills']){
  run(`prepareStage('${stage}');draw(1000)`);

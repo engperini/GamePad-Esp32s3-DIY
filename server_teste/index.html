@@ -294,7 +294,8 @@
       volanteSvg.style.transform = `rotate(${anguloAtual}deg)`;
 
       indicadoresBotoes.forEach(({ valor, led }, indice) => {
-        const botao = gp.buttons[indice];
+        const indices = gp.mapping === 'standard' && gp.buttons.length >= 12 ? [0,1,2,11,9] : gp.buttons.length >= 15 ? [0,1,3,14,11] : [0,1,2,3,4];
+        const botao = gp.buttons[indices[indice]];
         const pressionado = Boolean(botao && (botao.pressed || botao.value > 0.5));
         valor.childNodes[0].textContent = pressionado ? 'pressionado ' : 'solto ';
         led.classList.toggle('ativo', pressionado);
