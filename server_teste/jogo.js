@@ -98,6 +98,9 @@ window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','Ar
 function suspend(){keys.clear();keyClicks.clear();Object.keys(touch).forEach(k=>touch[k]=false);if(state.running){state.screen='main';menu(true);}}
 window.addEventListener('blur',suspend);document.addEventListener('visibilitychange',()=>{if(document.hidden)suspend();});
 let signature='';
+// Updating the diagnostic labels can cause a layout pass on embedded browsers.
+// The controls themselves are still read on every animation frame.
+let inputUiAt=0,inputUiSignature='';
 function input(now){
  let pads=[];try{pads=navigator.getGamepads?Array.from(navigator.getGamepads()).filter(Boolean):[];}catch{}
  const link=window.SophiaLink;if(link?.wifiSelected()){const wireless=link.getGamepad();pads=wireless?[wireless]:[];}
@@ -115,7 +118,10 @@ function input(now){
  const backPressed=edge('b',b),hornPressed=edge('horn',b||keys.has('KeyH')||touch.horn);keyClicks.delete('KeyH');
  const clickW=keyClicks.delete('KeyW'),clickEsc=keyClicks.delete('Escape'),clickEnter=keyClicks.delete('Enter');
  const accelerate=edge('a',a||r2||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||startButton||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
- $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}     R ${rClick?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
+ if(now>=inputUiAt||inputUiSignature!==sig){
+  inputUiAt=now+100;inputUiSignature=sig;
+  $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}     R ${rClick?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
+ }
  if((pause||backPressed)&&!state.running&&state.screen!=='main'){back();return {brake:false,cx:0,cy:0};}
  if(pause&&state.started){state.screen='main';menu(state.running);}
  if(!state.running){const nav=camY>.5||keys.has('ArrowDown')?1:camY<-.5||keys.has('ArrowUp')?-1:0;if(nav&&now>state.navTime){state.selection=(state.selection+nav+menuActions().length)%menuActions().length;highlight(true);state.navTime=now+260;}if(!nav)state.navTime=0;if(accelerate||enter)menuActions()[state.selection].click();return {brake:false,cx:0,cy:0};}
@@ -142,11 +148,17 @@ function projectRoad(z){
 function carPosition(){const p=projectRoad(state.z);return {x:p.x+state.x*p.k*w/1400,y:p.y};}
 let w=0,h=0;
 function renderProfile(width,height,dpr){
- const maxPixels=2304000,requested=Math.min(dpr||1,2);
+ // TV and touch browsers benefit more from a stable frame time than from tiny
+ // distant details.  The CSS size stays unchanged; only the internal Canvas
+ // is reduced. Desktop keeps the original, sharper profile.
+ const coarse=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches;
+ const economy=coarse||width>=1600||height>=1500;
+ const maxPixels=economy?1152000:2304000,requested=Math.min(dpr||1,2);
  const scale=Math.min(requested,Math.sqrt(maxPixels/Math.max(1,width*height)));
- return {scale,frameMs:scale<.98?1000/30:1000/60,roadSteps:scale<.98?58:76,horizonPoints:scale<.98?72:120,stars:scale<.98?30:65,flow:scale<.98?16:34};
+ const limited=economy||scale<.98;
+ return {scale,economy:limited,frameMs:limited?1000/30:1000/60,roadSteps:limited?42:76,horizonPoints:limited?42:120,stars:limited?18:65,flow:limited?10:34};
 }
-let render={scale:1,frameMs:1000/60,roadSteps:76,horizonPoints:120,stars:65,flow:34,lastPaint:-Infinity};
+let render={scale:1,economy:false,frameMs:1000/60,roadSteps:76,horizonPoints:120,stars:65,flow:34,lastPaint:-Infinity};
 function resize(){w=innerWidth;h=innerHeight;render={...renderProfile(w,h,devicePixelRatio),lastPaint:-Infinity};canvas.width=Math.round(w*render.scale);canvas.height=Math.round(h*render.scale);ctx.setTransform(render.scale,0,0,render.scale,0,0);}
 window.addEventListener('resize',resize);resize();
 function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fill();}
@@ -175,7 +187,7 @@ function draw(now){
  poly([[a.x-a.width*.5,a.y],[b.x-b.width*.5,b.y],[b.x+b.width*.5,b.y],[a.x+a.width*.5,a.y]],track.road[band?0:1]);
  for(const side of [-1,1])poly([[a.x+side*a.width*.475-a.width*.003,a.y],[b.x+side*b.width*.475-b.width*.003,b.y],[b.x+side*b.width*.475+b.width*.003,b.y],[a.x+side*a.width*.475+a.width*.003,a.y]],'#a4dbb3');
  if(band)for(const lane of [-.16,.16])poly([[a.x+a.width*(lane-.002),a.y],[b.x+b.width*(lane-.002),b.y],[b.x+b.width*(lane+.002),b.y],[a.x+a.width*(lane+.002),a.y]],'#536d71');
- drawRoadside(a,b,z1);
+ if(!render.economy||i%2===0)drawRoadside(a,b,z1);
  if(!day&&Math.floor(z1/35)%7===0){for(const side of [-1,1]){const px=a.x+side*a.width*.65;ctx.fillStyle='#769888';ctx.fillRect(px,a.y-65*a.k,3*a.k,65*a.k);ctx.fillStyle='#bbfa74';ctx.fillRect(px-4*a.k,a.y-65*a.k,11*a.k,5*a.k);}}
  }
  // Draw visible traffic and treasures once, from far to near. The road is already painted.
