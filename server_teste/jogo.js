@@ -318,8 +318,35 @@ function step(dt,controls){
 function updateHud(now){
  $('speed').textContent=String(Math.round(state.speed)).padStart(3,'0');$('gear').textContent=state.gear?['','PASSEIO','AVENTURA','TURBO'][state.gear]:'VAMOS?';$('distance').textContent=(state.z/24000).toFixed(2)+' / '+(stageLength/24000).toFixed(1)+' km';$('score').textContent='✦ '+state.stars;$('progress').style.width=(100*state.z/stageLength)+'%';document.querySelectorAll('.steps i').forEach((el,i)=>el.classList.toggle('on',i<state.gear));if(now>state.toastUntil)$('toast').textContent='';
 }
-function frame(now){const dt=Math.min((now-state.last)/1000||0,.05);state.last=now;const controls=input(now);step(dt,controls);
+function frame(now){const measured=performance.now();window.SophiaDiagnostics?.frame(now);const dt=Math.min((now-state.last)/1000||0,.05);state.last=now;const controls=input(now);step(dt,controls);
  const interval=state.running?render.frameMs:500;
- if(now-render.lastPaint>=interval){draw(now);updateHud(now);render.lastPaint=now;}
+ if(now-render.lastPaint>=interval){const paintAt=performance.now();draw(now);updateHud(now);render.lastPaint=now;window.SophiaDiagnostics?.paint(now,performance.now()-paintAt);}
+ window.SophiaDiagnostics?.work(performance.now()-measured);
  requestAnimationFrame(frame);}
 prepareStage('day');settings();menu(true);requestAnimationFrame(frame);
+
+// Optional five-second reports. No per-frame network traffic or unbounded arrays.
+if(document.createElement){
+ const button=document.createElement('button');button.textContent='Diagnóstico ao vivo: DESLIGADO';
+ $('settingsMenu').appendChild(button);
+ let enabled=false,busy=false,sequence=0,lastFrame=0,lastPaint=0,lastMessage=0;
+ let frames=[],paints=[],work=[],gaps=[],closes=[];
+ const session=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+ const add=(a,n)=>{if(a.length<1200&&Number.isFinite(n))a.push(n);};
+ const stats=a=>{if(!a.length)return null;const sorted=a.slice().sort((a,b)=>a-b);return {n:a.length,mean:+(a.reduce((a,b)=>a+b,0)/a.length).toFixed(2),p95:+sorted[Math.floor((sorted.length-1)*.95)].toFixed(2),max:+sorted[sorted.length-1].toFixed(2)};};
+ window.SophiaDiagnostics={
+  frame(now){if(enabled){if(lastFrame)add(frames,now-lastFrame);lastFrame=now;}},
+  paint(now,cost){if(enabled){add(work,cost);if(lastPaint)add(paints,now-lastPaint);lastPaint=now;}},
+  work(cost){if(enabled)frameWork=Math.max(frameWork,cost);},
+  message(){if(enabled){const now=performance.now();if(lastMessage)add(gaps,now-lastMessage);lastMessage=now;}},
+  closed(code,age){if(enabled&&closes.length<12)closes.push({code:code||0,ageMs:Math.round(age),at:Math.round(performance.now())});}
+ };
+ let frameWork=0;
+ button.onclick=()=>{enabled=!enabled;button.textContent='Diagnóstico ao vivo: '+(enabled?'LIGADO':'DESLIGADO');frames=[];paints=[];work=[];gaps=[];closes=[];lastFrame=lastPaint=lastMessage=0;};
+ setInterval(async()=>{
+  if(!enabled||busy||!window.SophiaLink?.available)return;
+  const report={session,sequence:++sequence,at:Date.now(),ua:navigator.userAgent.slice(0,180),screen:[w,h,devicePixelRatio,canvas.width,canvas.height],running:state.running,hidden:document.hidden,stage:state.stage,source:window.SophiaLink.source,ws:window.SophiaLink.socket?.readyState,rafMs:stats(frames),paintIntervalMs:stats(paints),drawCpuMs:stats(work),frameCpuMaxMs:+frameWork.toFixed(2),wsGapMs:stats(gaps),closes};
+  frames=[];paints=[];work=[];gaps=[];closes=[];frameWork=0;busy=true;
+  try{await fetch('/api/diagnostics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report),signal:AbortSignal.timeout(2000)});}catch{}finally{busy=false;}
+ },5000);
+}

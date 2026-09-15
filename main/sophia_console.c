@@ -207,6 +207,43 @@ static esp_err_t controls_ws(httpd_req_t *req)
     return httpd_ws_send_frame(req, &response);
 }
 
+// Bounded, volatile diagnostics; never write player reports to flash.
+static char diagnostic_reports[12][2048];
+static unsigned diagnostic_next, diagnostic_count;
+static esp_err_t diagnostics_post(httpd_req_t *req)
+{
+    if (!same_origin(req)) return ESP_FAIL;
+    if (req->content_len < 2 || req->content_len >= 2048) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid report");
+    char body[2048]; int got = 0;
+    while (got < req->content_len) {
+        int n = httpd_req_recv(req, body + got, req->content_len - got);
+        if (n <= 0) return ESP_FAIL;
+        got += n;
+    }
+    body[got] = 0;
+    cJSON *j = cJSON_Parse(body);
+    if (!cJSON_IsObject(j)) { cJSON_Delete(j); return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON"); }
+    cJSON_Delete(j);
+    memcpy(diagnostic_reports[diagnostic_next], body, got + 1);
+    diagnostic_next = (diagnostic_next + 1) % 12;
+    if (diagnostic_count < 12) diagnostic_count++;
+    return httpd_resp_send(req, "OK", 2);
+}
+static esp_err_t diagnostics_get(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    char header[128];
+    snprintf(header, sizeof(header), "{\"uptimeMs\":%"PRId64",\"freeHeap\":%lu,\"reports\":[", esp_timer_get_time()/1000, (unsigned long)esp_get_free_heap_size());
+    httpd_resp_sendstr_chunk(req, header);
+    for (unsigned i = 0; i < diagnostic_count; i++) {
+        if (i) httpd_resp_sendstr_chunk(req, ",");
+        httpd_resp_sendstr_chunk(req, diagnostic_reports[(diagnostic_next + 12 - diagnostic_count + i) % 12]);
+    }
+    httpd_resp_sendstr_chunk(req, "]}");
+    return httpd_resp_send_chunk(req, NULL, 0);
+}
+
 static esp_err_t asset_get(httpd_req_t *req)
 {
     const char *uri = strcmp(req->uri, "/") == 0 ? "/jogo.html" : req->uri;
@@ -312,6 +349,8 @@ esp_err_t sophia_console_start(void)
     ESP_ERROR_CHECK(httpd_start(&server, &config));
     const httpd_uri_t routes[] = {
         {.uri="/api/status", .method=HTTP_GET, .handler=status_get},
+        {.uri="/api/diagnostics", .method=HTTP_GET, .handler=diagnostics_get},
+        {.uri="/api/diagnostics", .method=HTTP_POST, .handler=diagnostics_post},
         {.uri="/api/config", .method=HTTP_POST, .handler=config_post},
         {.uri="/api/ota", .method=HTTP_POST, .handler=ota_post},
         {.uri="/ws", .method=HTTP_GET, .handler=controls_ws, .is_websocket=true},

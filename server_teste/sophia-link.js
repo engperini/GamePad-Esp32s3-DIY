@@ -49,9 +49,10 @@
           if (socket.readyState === 1 && !this.pending) { this.pending = true; socket.send('?'); }
         }, 20);
       };
-      socket.onmessage = e => { if (epoch === this.epoch) this.receive(e.data); };
+      socket.onmessage = e => { if (epoch === this.epoch) { root.SophiaDiagnostics?.message(); this.receive(e.data); } };
       socket.onerror = () => socket.close();
-      socket.onclose = () => {
+      socket.onclose = event => {
+        root.SophiaDiagnostics?.closed(event?.code, this.env.now()-this.last);
         if (epoch !== this.epoch) return;
         this.pad = null; this.seq = null; this.armed = false; this.pending = false;
         if (this.timer) this.env.clearInterval(this.timer); this.timer = null;
