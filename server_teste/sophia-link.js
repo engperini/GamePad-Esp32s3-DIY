@@ -4,7 +4,7 @@
   function decode(message) {
     let p; try { p = JSON.parse(message); } catch { return null; }
     if (!Array.isArray(p) || p.length !== 7 || p[0] !== 1 || !p.every(Number.isInteger)) return null;
-    if (p[1] < 0 || p[1] > 0xffffffff || p.slice(2, 5).some(v => Math.abs(v) > 32767) || p[5] < 0 || p[5] > 31 || p[6] < 0 || p[6] > 250) return null;
+    if (p[1] < 0 || p[1] > 0xffffffff || p.slice(2, 5).some(v => Math.abs(v) > 32767) || p[5] < 0 || p[5] > 255 || p[6] < 0 || p[6] > 250) return null;
     return { seq: p[1], axes: [p[2] / 32767, 0, p[3] / 32767, p[4] / 32767], buttons: p[5] };
   }
   class Link {
@@ -21,7 +21,7 @@
         this.armed = true;
       }
       this.pad = { id: 'Sophia · Wi-Fi', index: 99, mapping: 'standard', axes: p.axes,
-        buttons: Array.from({ length: 5 }, (_, i) => ({ pressed: !!(p.buttons & (1 << i)), value: (p.buttons >> i) & 1 })) };
+        buttons: Array.from({ length: 8 }, (_, i) => ({ pressed: !!(p.buttons & (1 << i)), value: (p.buttons >> i) & 1 })) };
       this.status = 'Volante por Wi-Fi'; return true;
     }
     getGamepad() { return this.pad && this.env.now() - this.last <= 350 ? this.pad : null; }

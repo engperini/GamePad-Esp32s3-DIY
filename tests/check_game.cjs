@@ -150,6 +150,14 @@ assert.equal(get('consoleLan').href,undefined);assert.equal(get('consoleDirect')
 run('showSettings()');assert(Array.from(run('menuActions()')).includes(get('advanced')),'console accessible by gamepad');
 console.log('PASS: dynamic AP/LAN addresses, disconnected state and direct console navigation.');
 const source=fs.readFileSync('server_teste/jogo.js','utf8');
+for(const mapping of ['', 'standard'])for(const count of [8,17]){
+ pads=[{index:0,id:'Sophia',mapping,axes:[0,0,0,0],buttons:Array.from({length:count},()=>({pressed:false}))}];
+ run('input(200000);reset();held.clear()');
+ const standard=mapping==='standard'&&count>=12,raw=!standard&&count>=15;
+ pads[0].buttons[standard?7:raw?9:6].pressed=true;run('input(200020)');assert.equal(run('state.gear'),1,'new R2 accelerates');
+ pads[0].buttons[standard?6:raw?8:5].pressed=true;assert.equal(run('input(200040).brake'),true,'new L2 brakes');
+ pads[0].buttons[standard?9:raw?11:7].pressed=true;run('input(200060)');assert.equal(run('state.running'),false,'external Start pauses');
+}
 for(const [saved,expected] of [[{},true],[{sound:false},true],[{sound:false,soundRevision:2},false]]){
  const fresh={...context,window:{addEventListener(){}},localStorage:{getItem:()=>JSON.stringify(saved),setItem(){}}};
  vm.createContext(fresh);vm.runInContext(source,fresh);assert.equal(vm.runInContext('state.sound',fresh),expected);

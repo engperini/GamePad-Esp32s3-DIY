@@ -236,3 +236,15 @@ Build, descritor compilado, partições, transporte e controles do jogo testados
 Reconhecimento nativo na TV requer teste após esquecer/parear novamente o controle.
 O salto do volante relatado no jogo externo ainda está em investigação; a resposta
 linear e a inversão do eixo permanecem inalteradas.
+
+## Versão 1.4.1 — entradas reservadas para L2, R2 e Start
+
+GPIO8=L2, GPIO9=R2 e GPIO10=Start externo, todos ativos em nível baixo com
+pull-up interno. Botões normalmente abertos ligam GPIO a GND. Start externo
+duplica o BOOT. Descritor HID permanece com 15 slots/10 bytes; o Wi-Fi recebe
+os três novos bits físicos e o jogo aceita L2 para freio, R2 para alternar ritmo
+e Start externo para pausa.
+
+OTA aplicada em 192.168.0.23, de ota_0 para ota_1. Versão 1.4.1 e arquivos
+confirmados após reinício. Uma amostra WebSocket confirmou bits 5/6/7 zerados
+com os pinos abertos. Build, HID, partições, controles e transporte aprovados.

@@ -29,7 +29,7 @@ assert report_id == 1
 assert inputs == [(1,16,4,2,[0x30,0x31,0x33,0x34]), (9,1,15,2,[]), (9,1,1,3,[])], inputs
 assert sum(size * count for _,size,count,_,_ in inputs) == 80
 mapping = [int(v) for v in source.split('botoes_usos_hid[QUANTIDADE_BOTOES] = {')[1].split('}')[0].split(',')]
-assert mapping == [1,2,4,15,12], mapping
-assert len(set(mapping)) == 5 and all(1 <= usage <= 15 for usage in mapping)
-assert sum(1 << (usage-1) for usage in mapping) == 0x480b
+assert mapping == [1,2,4,15,12,9,10,12], mapping
+assert len(set(mapping)) == 7 and all(1 <= usage <= 15 for usage in mapping)
+assert sum(1 << (usage-1) for usage in set(mapping)) == 0x4b0b
 print('PASS: compiled HID descriptor: X/Y/Rx/Ry, 15 button slots, 10-byte report.')

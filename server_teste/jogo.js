@@ -110,10 +110,11 @@ function input(now){
  const raw=gp?.axes[0]||0, camX=gp?.axes[rx]||0,camY=gp?.axes[ry]||0;
  const pressed=i=>Boolean(gp?.buttons[i]?.pressed||gp?.buttons[i]?.value>.5);
  const standard=gp?.mapping==='standard'&&gp.buttons.length>=12,rawHid=!standard&&gp?.buttons.length>=15;
- const a=pressed(0),b=pressed(1),x=pressed(rawHid?3:2),rClick=pressed(standard?11:rawHid?14:3),startButton=pressed(standard?9:rawHid?11:4);
+ const a=pressed(0),b=pressed(1),x=pressed(rawHid?3:2),rClick=pressed(standard?11:rawHid?14:3),startButton=pressed(standard?9:rawHid?11:4)||(!standard&&!rawHid&&pressed(7));
+ const l2=pressed(standard?6:rawHid?8:5),r2=pressed(standard?7:rawHid?9:6);
  const backPressed=edge('b',b),hornPressed=edge('horn',b||keys.has('KeyH')||touch.horn);keyClicks.delete('KeyH');
  const clickW=keyClicks.delete('KeyW'),clickEsc=keyClicks.delete('Escape'),clickEnter=keyClicks.delete('Enter');
- const accelerate=edge('a',a||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||startButton||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
+ const accelerate=edge('a',a||r2||keys.has('KeyW')||touch.go)||clickW,pause=edge('x',x||startButton||keys.has('Escape'))||clickEsc,enter=edge('enter',keys.has('Enter'))||clickEnter;
  $('connection').textContent=gp?'● '+gp.id:link?.wifiSelected()?link.status:'TECLADO DISPONÍVEL';$('steerValue').textContent=raw.toFixed(2);$('steerMeter').style.left=`${50+raw*47}%`;$('cameraValue').textContent=camX.toFixed(2)+' / '+camY.toFixed(2);$('buttonSignals').textContent=`A ${a?'●':'○'}     B ${b?'●':'○'}     X ${x?'●':'○'}     R ${rClick?'●':'○'}`;$('mapping').textContent=gp?`L: eixo 0 · R: eixos ${rx}/${ry}`:'Conecte o gamepad e pressione um botão.';
  if((pause||backPressed)&&!state.running&&state.screen!=='main'){back();return {brake:false,cx:0,cy:0};}
  if(pause&&state.started){state.screen='main';menu(state.running);}
@@ -121,7 +122,7 @@ function input(now){
  if(hornPressed)honk();
  if(accelerate){state.gear=state.gear%3+1;notify(`VELOCIDADE ${state.gear} / ${targets[state.gear]} KM/H`);}
  state.steer=keys.has('ArrowLeft')||touch.left?-1:keys.has('ArrowRight')||touch.right?1:Math.max(-1,Math.min(1,axis(raw,state.deadzone)*state.sensitivity))*(state.invert?-1:1);
- return {brake:rClick||keys.has('Space')||touch.brake,cx:axis(camX)+(keys.has('KeyL')?1:0)-(keys.has('KeyJ')?1:0),cy:axis(camY)+(keys.has('KeyK')?1:0)-(keys.has('KeyI')?1:0)};
+ return {brake:rClick||l2||keys.has('Space')||touch.brake,cx:axis(camX)+(keys.has('KeyL')?1:0)-(keys.has('KeyJ')?1:0),cy:axis(camY)+(keys.has('KeyK')?1:0)-(keys.has('KeyI')?1:0)};
 }
 function roadSegment(z){const list=tracks[state.stage].segments;return list.find(s=>z<s.end)||list[list.length-1];}
 function roadCenter(z){const track=tracks[state.stage],s=roadSegment(z),delta=z-s.start;if(z>track.length)return roadCenter(track.length)+roadSlope(track.length)*(z-track.length);return s.offset+originalCenter(track,s.original+(s.straight?0:delta))+(s.straight?s.slope*delta:0);}

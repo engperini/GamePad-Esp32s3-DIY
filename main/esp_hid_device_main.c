@@ -43,7 +43,10 @@ static const char *TAG = "VOLANTE_HID";
 #define PINO_BOTAO_5_BOOT       GPIO_NUM_0
 #define PINO_BOTAO_3            GPIO_NUM_4
 #define PINO_BOTAO_4_JOYSTICK   GPIO_NUM_7
-#define QUANTIDADE_BOTOES       5
+#define PINO_BOTAO_L2           GPIO_NUM_8
+#define PINO_BOTAO_R2           GPIO_NUM_9
+#define PINO_BOTAO_START        GPIO_NUM_10
+#define QUANTIDADE_BOTOES       8
 
 /* Corrige o sentido fisico do potenciometro para todos os jogos/hosts. */
 #define VOLANTE_INVERTIDO       1
@@ -68,9 +71,10 @@ static const char *TAG = "VOLANTE_HID";
 /* MAPEAMENTO EDITAVEL: usos HID Button (nao indices JavaScript).
  * GPIO2=A(1), GPIO3=B(2), GPIO4=X(4), GPIO7=R3(15), BOOT=Start(12).
  * A ordem corresponde aos bits fisicos retornados por ler_botoes().
+ * GPIO8=L2(9), GPIO9=R2(10), GPIO10=Start(12), duplicando BOOT.
  * Mantenha cada uso entre 1 e 15. Slots sem botao ficam soltos.
  */
-static const uint8_t botoes_usos_hid[QUANTIDADE_BOTOES] = {1, 2, 4, 15, 12};
+static const uint8_t botoes_usos_hid[QUANTIDADE_BOTOES] = {1, 2, 4, 15, 12, 9, 10, 12};
 
 /* Report ID 1: quatro eixos + 15 slots padrao HID e um bit reservado. */
 static const unsigned char gamepad_report_map[] = {
@@ -224,6 +228,9 @@ static uint8_t ler_botoes(void)
         botoes |= 1U << 4;
     }
 
+    if (gpio_get_level(PINO_BOTAO_L2) == 0) botoes |= 1U << 5;
+    if (gpio_get_level(PINO_BOTAO_R2) == 0) botoes |= 1U << 6;
+    if (gpio_get_level(PINO_BOTAO_START) == 0) botoes |= 1U << 7;
     return botoes;
 }
 
@@ -415,7 +422,10 @@ void app_main(void)
                         (1ULL << PINO_BOTAO_2) |
                         (1ULL << PINO_BOTAO_3) |
                         (1ULL << PINO_BOTAO_4_JOYSTICK) |
-                        (1ULL << PINO_BOTAO_5_BOOT),
+                        (1ULL << PINO_BOTAO_5_BOOT) |
+                        (1ULL << PINO_BOTAO_L2) |
+                        (1ULL << PINO_BOTAO_R2) |
+                        (1ULL << PINO_BOTAO_START),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,

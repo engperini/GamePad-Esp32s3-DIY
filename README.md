@@ -72,9 +72,9 @@ Mapa em texto para consulta rápida:
  botão 1     2  ○│                    │○ 13    não usado
  botão B     3  ○│                    │○ 12    não usado
  botão 3     4  ○│                    │○ 11    não usado
- VRX         5  ○│                    │○ 10    não usado
- VRY         6  ○│  BOOT = botão 5   │○ 9     não usado
- SW          7  ○│                    │○ 8     não usado
+ VRX         5  ○│                    │○ 10    Start externo
+ VRY         6  ○│  BOOT = botão 5   │○ 9     R2
+ SW          7  ○│                    │○ 8     L2
                 └─────── USB-C ──────┘
 ```
 
@@ -146,7 +146,9 @@ a inicialização coloca o ESP32-S3 no modo de gravação.
 
 O relatório HID usa Report ID 1, quatro eixos assinados de 16 bits e quinze slots
 de botão, mais um bit de padding (10 bytes: X, Y=0, Rx, Ry, botões). Uma atualização é enviada a cada 20 ms.
-Os cinco botões físicos correspondem a A, B, X, R3 e Start. Veja
+Os botões físicos correspondem a A, B, X, R3, Start (BOOT), L2 (GPIO8),
+R2 (GPIO9) e Start externo (GPIO10). Os três novos botões ligam seus GPIOs ao
+GND; entradas abertas permanecem soltas por pull-up interno. Veja
 [como alterar o mapeamento](docs/MAPEAMENTO.md).
 
 A/B/X correspondem aos botões HID 1/2/3. Jogos podem exigir atribuir esses
