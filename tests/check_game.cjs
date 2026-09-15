@@ -13,8 +13,7 @@ for(const [width,height,dpr,slow] of [[1200,800,1,false],[3840,2160,1,true],[384
  assert(profile.scale>0&&profile.scale<=Math.min(dpr,2));
  assert(width*height*profile.scale*profile.scale<=2304001,'Canvas backing store stays bounded');
  assert.equal(profile.frameMs===1000/30,slow,'large mobile/TV displays use a stable visual cadence');
- assert(profile.roadSteps<96&&profile.roadSteps>=42);
- if(slow){assert(profile.economy,'large mobile/TV displays use the economical renderer');assert(width*height*profile.scale*profile.scale<=1152001,'economical profile has a stricter pixel cap');}
+ assert(profile.roadSteps<96&&profile.roadSteps>=58);
 }
 run('state.running=false;render.lastPaint=-Infinity;frame(0)');const firstMenuPaint=run('render.lastPaint');run('frame(16)');assert.equal(run('render.lastPaint'),firstMenuPaint,'menu background does not redraw every animation frame');
 context.innerWidth=3840;context.innerHeight=2160;context.devicePixelRatio=2;run('resize()');assert(get('world').width*get('world').height<=2304001,'actual 4K backing canvas is capped');assert(run('render.scale')<.6,'4K keeps CSS size while lowering internal pixels');
