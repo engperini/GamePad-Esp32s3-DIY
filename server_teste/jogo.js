@@ -34,7 +34,7 @@ function save(){try{localStorage.setItem('orbita-settings',JSON.stringify({inver
 function settings(){$('invert').textContent=`Volante invertido: ${state.invert?'SIM':'NÃO'}`;$('sensitivity').textContent=`Sensibilidade: ${state.sensitivity.toFixed(1)}×`;$('deadButton').textContent=`Zona morta: ${Math.round(state.deadzone*100)}%`;$('sound').textContent=`Sons: ${state.sound?'SIM':'NÃO'}`;}
 function menuActions(){return (state.screen==='settings'?['invert','sensitivity','deadButton','sound','fullScreen','source','advanced','help','back']:state.screen==='garage'?['modelRenegade','modelSong','modelSport','modelBuggy','colorWhite','colorGray','colorPink','colorBlue','colorGreen','colorYellow','garageBack']:['start','day','night','coast','hills','customize','openSettings','reset']).map($);}
 function highlight(scroll=false){menuActions().forEach((b,i)=>{b.classList.toggle('selected',i===state.selection);if(scroll&&i===state.selection)b.scrollIntoView?.({block:'nearest'});});}
-function menu(show){state.running=!show;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('garageMenu').hidden=state.screen!=='garage';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} tesouros e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue estrelas, corações, doces e cristais. Desvie dos obstáculos e divirta-se!';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';updateGarage();highlight();}}
+function menu(show){state.running=!show;render.lastPaint=-Infinity;$('overlay').classList.toggle('hidden',!show);document.body.classList.toggle('menu-open',show);$('pause').textContent=show?'▶ Continuar':'Ⅱ Pausa';if(show){$('mainMenu').hidden=state.screen!=='main';$('settingsMenu').hidden=state.screen!=='settings';$('garageMenu').hidden=state.screen!=='garage';$('menuTitle').innerHTML=state.completed?'Que viagem linda!<br><em>Você conseguiu!</em>':state.started?'Uma paradinha?<br><em>A aventura espera.</em>':'Vamos dar<br><em>uma voltinha?</em>';$('menuText').textContent=state.completed?`${state.stars} tesouros e ${state.passed} desvios! Pronto para conhecer o outro mundo?`:'Pegue estrelas, corações, doces e cristais. Desvie dos obstáculos e divirta-se!';$('start').textContent=state.completed?'Conhecer o outro mundo ↗':state.started?'Continuar aventura ↗':'Vamos brincar! ↗';updateGarage();highlight();}}
 function showSettings(){state.screen='settings';state.selection=0;menu(true);refreshConsoleInfo();}
 function showGarage(){state.screen='garage';state.selection=0;menu(true);}
 function back(){state.screen='main';state.selection=0;menu(true);}
@@ -141,7 +141,14 @@ function projectRoad(z){
 }
 function carPosition(){const p=projectRoad(state.z);return {x:p.x+state.x*p.k*w/1400,y:p.y};}
 let w=0,h=0;
-function resize(){w=innerWidth;h=innerHeight;const d=Math.min(devicePixelRatio||1,2);canvas.width=w*d;canvas.height=h*d;ctx.setTransform(d,0,0,d,0,0);}window.addEventListener('resize',resize);resize();
+function renderProfile(width,height,dpr){
+ const maxPixels=2304000,requested=Math.min(dpr||1,2);
+ const scale=Math.min(requested,Math.sqrt(maxPixels/Math.max(1,width*height)));
+ return {scale,frameMs:scale<.98?1000/30:1000/60,roadSteps:scale<.98?58:76,horizonPoints:scale<.98?72:120,stars:scale<.98?30:65,flow:scale<.98?16:34};
+}
+let render={scale:1,frameMs:1000/60,roadSteps:76,horizonPoints:120,stars:65,flow:34,lastPaint:-Infinity};
+function resize(){w=innerWidth;h=innerHeight;render={...renderProfile(w,h,devicePixelRatio),lastPaint:-Infinity};canvas.width=Math.round(w*render.scale);canvas.height=Math.round(h*render.scale);ctx.setTransform(render.scale,0,0,render.scale,0,0);}
+window.addEventListener('resize',resize);resize();
 function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fill();}
 function carPath(g,points,color){g.fillStyle=color;g.beginPath();points.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));g.closePath();g.fill();}
 function paintPlayerCar(g,size,model,color){window.SophiaCars.draw(g,size*.5,model,color,0,false);}
@@ -156,21 +163,23 @@ function draw(now){
  const horizon=h*(.43+state.pitch*.12),shift=state.yaw*w*.2;
  const sky=ctx.createLinearGradient(0,0,0,horizon);sky.addColorStop(0,track.sky[0]);sky.addColorStop(.7,track.sky[1]);sky.addColorStop(1,track.sky[2]);ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
  ctx.fillStyle=day?'#fff7aa':'#dbecd9';ctx.beginPath();ctx.arc(w*.7-shift*.25,horizon*.48,28,0,Math.PI*2);ctx.fill();
- if(!day)for(let i=0;i<65;i++){const sx=((Math.sin(i*54.32)+1)*.5*w-shift*.1+w)%w,sy=(Math.cos(i*19.73)+1)*.37*horizon;ctx.fillStyle=`rgba(220,240,240,${.2+(i%4)*.12})`;ctx.fillRect(sx,sy,1.4,1.4);}
- for(let layer=0;layer<3;layer++){const points=[[0,horizon+30]];for(let i=0;i<=120;i++){const x=i*w/120;points.push([x,horizon-12-Math.abs(Math.sin(i*.1425+layer*2+state.z/18000))* (35+layer*15)]);}points.push([w,horizon+30]);poly(points,(day?['#aad8b5','#89caa6','#65b29a']:['#263344','#243444','#1f3340'])[layer]);}
+ if(!day)for(let i=0;i<render.stars;i++){const sx=((Math.sin(i*54.32)+1)*.5*w-shift*.1+w)%w,sy=(Math.cos(i*19.73)+1)*.37*horizon;ctx.fillStyle=`rgba(220,240,240,${.2+(i%4)*.12})`;ctx.fillRect(sx,sy,1.4,1.4);}
+ for(let layer=0;layer<3;layer++){const points=[[0,horizon+30]];for(let i=0;i<=render.horizonPoints;i++){const x=i*w/render.horizonPoints;points.push([x,horizon-12-Math.abs(Math.sin(i*.1425+layer*2+state.z/18000))* (35+layer*15)]);}points.push([w,horizon+30]);poly(points,(day?['#aad8b5','#89caa6','#65b29a']:['#263344','#243444','#1f3340'])[layer]);}
  ctx.fillStyle=track.ground[0];ctx.fillRect(0,horizon,w,h-horizon);
  if(day)drawClouds(horizon,shift);
- const project=projectRoad;
- for(let i=95;i>=0;i--){const z1=Math.floor((state.z-cameraDistance)/35)*35+i*35,z2=z1+35,a=project(z1),b=project(z2),band=Math.floor(z1/140)%2;
+ const project=projectRoad,roadSteps=render.roadSteps,roadUnit=95*35/roadSteps;
+ const visibleObjects=objects.filter(o=>!o.done&&o.z>=state.z-45&&o.z<=state.z+95*35).sort((a,b)=>b.z-a.z);
+ for(let i=roadSteps;i>=0;i--){const z1=Math.floor((state.z-cameraDistance)/roadUnit)*roadUnit+i*roadUnit,z2=z1+roadUnit,a=project(z1),b=project(z2),band=Math.floor(z1/140)%2;
  poly([[0,b.y],[w,b.y],[w,a.y],[0,a.y]],track.ground[band?0:1]);
  poly([[a.x-a.width*.56,a.y],[b.x-b.width*.56,b.y],[b.x+b.width*.56,b.y],[a.x+a.width*.56,a.y]],track.edge[band?0:1]);
  poly([[a.x-a.width*.5,a.y],[b.x-b.width*.5,b.y],[b.x+b.width*.5,b.y],[a.x+a.width*.5,a.y]],track.road[band?0:1]);
  for(const side of [-1,1])poly([[a.x+side*a.width*.475-a.width*.003,a.y],[b.x+side*b.width*.475-b.width*.003,b.y],[b.x+side*b.width*.475+b.width*.003,b.y],[a.x+side*a.width*.475+a.width*.003,a.y]],'#a4dbb3');
  if(band)for(const lane of [-.16,.16])poly([[a.x+a.width*(lane-.002),a.y],[b.x+b.width*(lane-.002),b.y],[b.x+b.width*(lane+.002),b.y],[a.x+a.width*(lane+.002),a.y]],'#536d71');
  drawRoadside(a,b,z1);
- for(const object of objects)if(!object.done&&object.z>=z1&&object.z<z2&&object.z>=state.z-45)drawObject(object);
  if(!day&&Math.floor(z1/35)%7===0){for(const side of [-1,1]){const px=a.x+side*a.width*.65;ctx.fillStyle='#769888';ctx.fillRect(px,a.y-65*a.k,3*a.k,65*a.k);ctx.fillStyle='#bbfa74';ctx.fillRect(px-4*a.k,a.y-65*a.k,11*a.k,5*a.k);}}
  }
+ // Draw visible traffic and treasures once, from far to near. The road is already painted.
+ for(const object of visibleObjects)drawObject(object);
  // The chosen car stays in the driver's reference frame; R only changes the view.
  const car=carPosition(),carX=car.x,carY=car.y,sz=Math.min(w*.12,130);ctx.save();ctx.translate(carX,carY);ctx.rotate(state.turnAngle*.08);ctx.globalAlpha=state.shield>0&&Math.floor(state.elapsed*10)%2===0?.5:1;ctx.shadowColor=day?'#426f7844':'transparent';ctx.shadowBlur=day?16:0;ctx.filter=day?'none':'brightness(.78)';paintPlayerCar(ctx,sz,state.carModel,state.carColor,state.turnAngle);ctx.restore();
  drawSpeedFlow();
@@ -196,7 +205,7 @@ function drawSpeedFlow(){
  if(!intensity)return;
  const horizon=h*(.43+state.pitch*.12),vanish=w/2-state.yaw*w*.2;
  ctx.save();ctx.lineWidth=1.2;
- for(let i=0;i<34;i++){
+ for(let i=0;i<render.flow;i++){
   const t=((state.z/1250+i*.6180339)%1+1)%1;
   const side=i%2?1:-1,spread=.5+(i%7)*.075;
   const y=horizon+(h-horizon)*t*t;
@@ -306,6 +315,11 @@ function step(dt,controls){
  state.yaw+=(controls.cx*.95-state.yaw)*Math.min(1,dt*5);state.pitch+=(controls.cy*.9-state.pitch)*Math.min(1,dt*5);
  if(state.z>=stageLength)nextStage();
 }
+function updateHud(now){
+ $('speed').textContent=String(Math.round(state.speed)).padStart(3,'0');$('gear').textContent=state.gear?['','PASSEIO','AVENTURA','TURBO'][state.gear]:'VAMOS?';$('distance').textContent=(state.z/24000).toFixed(2)+' / '+(stageLength/24000).toFixed(1)+' km';$('score').textContent='✦ '+state.stars;$('progress').style.width=(100*state.z/stageLength)+'%';document.querySelectorAll('.steps i').forEach((el,i)=>el.classList.toggle('on',i<state.gear));if(now>state.toastUntil)$('toast').textContent='';
+}
 function frame(now){const dt=Math.min((now-state.last)/1000||0,.05);state.last=now;const controls=input(now);step(dt,controls);
- draw(now);$('speed').textContent=String(Math.round(state.speed)).padStart(3,'0');$('gear').textContent=state.gear?['','PASSEIO','AVENTURA','TURBO'][state.gear]:'VAMOS?';$('distance').textContent=(state.z/24000).toFixed(2)+' / '+(stageLength/24000).toFixed(1)+' km';$('score').textContent='✦ '+state.stars;$('progress').style.width=(100*state.z/stageLength)+'%';document.querySelectorAll('.steps i').forEach((el,i)=>el.classList.toggle('on',i<state.gear));if(now>state.toastUntil)$('toast').textContent='';requestAnimationFrame(frame);}
+ const interval=state.running?render.frameMs:500;
+ if(now-render.lastPaint>=interval){draw(now);updateHud(now);render.lastPaint=now;}
+ requestAnimationFrame(frame);}
 prepareStage('day');settings();menu(true);requestAnimationFrame(frame);

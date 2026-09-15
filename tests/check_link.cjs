@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const {Link, decode} = require('../server_teste/sophia-link.js');
+const {Link, decode, STALE_MS} = require('../server_teste/sophia-link.js');
 let now = 0;
 const packet = (seq, buttons = 0, rx = 0, age = 0) => JSON.stringify([1, seq, 32767, rx, -16384, buttons, age]);
 assert.equal(decode('invalid'), null);
@@ -20,7 +20,7 @@ link.receive(neutral(2)); assert.equal(link.getGamepad().axes[0], 1);
 link.receive(packet(3, 5)); assert.equal(link.getGamepad().buttons[2].pressed, true);
 now=300; assert.equal(link.receive(packet(3, 5)), false);
 assert.equal(link.receive(packet(2)), false);
-now=351; assert.equal(link.getGamepad(), null); // duplicate never refreshes timeout
+now=STALE_MS+1; assert.equal(link.getGamepad(), null); // duplicate never refreshes timeout
 link.seq=0xffffffff; assert.equal(link.receive(neutral(0)), true);
 link.stop(); assert.equal(link.getGamepad(), null); assert.equal(link.armed,false);
 let interval, retry, socket;
@@ -28,7 +28,7 @@ class Socket {constructor(){socket=this;this.readyState=1;} send(value){this.sen
 const live = new Link({now:()=>now,WebSocket:Socket,url:'ws://test/ws',setInterval:fn=>(interval=fn,1),clearInterval:()=>{},setTimeout:fn=>(retry=fn,2),clearTimeout:()=>{}});
 live.available=true; live.setSource('auto'); socket.onopen(); interval(); assert.equal(socket.sent,'?');
 socket.onmessage({data:neutral(1)}); assert.ok(live.getGamepad());
-now+=351; interval(); assert.equal(socket.closed,true); assert.equal(live.getGamepad(),null);
+now+=STALE_MS+1; interval(); assert.equal(socket.closed,true); assert.equal(live.getGamepad(),null);
 retry(); const oldSocket=socket; live.setSource('local'); oldSocket.onmessage({data:neutral(2)});
 assert.equal(live.getGamepad(),null); assert.equal(live.wifiSelected(),false);
 console.log('PASS Wi-Fi: validation, arming, sequence/wrap, stale timeout, reconnect and source isolation');

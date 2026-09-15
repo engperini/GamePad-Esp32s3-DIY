@@ -1,6 +1,8 @@
 /* Optional same-origin Wi-Fi transport. A normal static server keeps Gamepad API. */
 (function (root) {
   'use strict';
+  // Embedded browsers can pause the JavaScript thread briefly while painting.
+  const STALE_MS = 900;
   function decode(message) {
     let p; try { p = JSON.parse(message); } catch { return null; }
     if (!Array.isArray(p) || p.length !== 7 || p[0] !== 1 || !p.every(Number.isInteger)) return null;
@@ -24,7 +26,7 @@
         buttons: Array.from({ length: 8 }, (_, i) => ({ pressed: !!(p.buttons & (1 << i)), value: (p.buttons >> i) & 1 })) };
       this.status = 'Volante por Wi-Fi'; return true;
     }
-    getGamepad() { return this.pad && this.env.now() - this.last <= 350 ? this.pad : null; }
+    getGamepad() { return this.pad && this.env.now() - this.last <= STALE_MS ? this.pad : null; }
     stop() {
       this.epoch++; if (this.timer) this.env.clearInterval(this.timer); if (this.retry) this.env.clearTimeout(this.retry);
       this.timer = this.retry = null; const socket = this.socket; this.socket = null;
@@ -43,7 +45,7 @@
         if (epoch !== this.epoch) return;
         this.last = this.env.now();
         this.timer = this.env.setInterval(() => {
-          if (this.env.now() - this.last > 350) { this.pad = null; socket.close(); return; }
+          if (this.env.now() - this.last > STALE_MS) { this.pad = null; socket.close(); return; }
           if (socket.readyState === 1 && !this.pending) { this.pending = true; socket.send('?'); }
         }, 20);
       };
@@ -58,7 +60,7 @@
       };
     }
   }
-  if (typeof module !== 'undefined') { module.exports = { Link, decode }; return; }
+  if (typeof module !== 'undefined') { module.exports = { Link, decode, STALE_MS }; return; }
   // Window timer functions require their native receiver in browsers. Wrappers
   // keep Link's injected environment from becoming their `this` value.
   const link = new Link({ now: () => performance.now(), WebSocket,

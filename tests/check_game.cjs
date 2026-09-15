@@ -8,6 +8,16 @@ let pads=[{index:0,id:'GamePad Sophia',mapping:'',axes:[0,0,0,0,0],buttons:Array
 const context={document:{body:{classList:{toggle(){}}},getElementById:get,addEventListener(){},querySelectorAll:()=>[]},window:{addEventListener(){}},navigator:{getGamepads:()=>pads},localStorage:{getItem:()=>null,setItem(){}},Option:function(){},innerWidth:1200,innerHeight:800,devicePixelRatio:1,performance:{now:()=>0},requestAnimationFrame(){},console};
 vm.createContext(context);vm.runInContext(fs.readFileSync('server_teste/cars.js','utf8'),context);vm.runInContext(fs.readFileSync('server_teste/jogo.js','utf8'),context);
 const run=s=>vm.runInContext(s,context);
+for(const [width,height,dpr,slow] of [[1200,800,1,false],[3840,2160,1,true],[3840,2160,2,true],[1080,2400,3,true]]){
+ const profile=run(`renderProfile(${width},${height},${dpr})`);
+ assert(profile.scale>0&&profile.scale<=Math.min(dpr,2));
+ assert(width*height*profile.scale*profile.scale<=2304001,'Canvas backing store stays bounded');
+ assert.equal(profile.frameMs===1000/30,slow,'large mobile/TV displays use a stable visual cadence');
+ assert(profile.roadSteps<96&&profile.roadSteps>=58);
+}
+run('state.running=false;render.lastPaint=-Infinity;frame(0)');const firstMenuPaint=run('render.lastPaint');run('frame(16)');assert.equal(run('render.lastPaint'),firstMenuPaint,'menu background does not redraw every animation frame');
+context.innerWidth=3840;context.innerHeight=2160;context.devicePixelRatio=2;run('resize()');assert(get('world').width*get('world').height<=2304001,'actual 4K backing canvas is capped');assert(run('render.scale')<.6,'4K keeps CSS size while lowering internal pixels');
+context.innerWidth=1200;context.innerHeight=800;context.devicePixelRatio=1;run('resize()');assert.equal(get('world').width,1200);assert.equal(get('world').height,800,'desktop quality stays native');
 run('start();state.invert=true');
 for(const expected of [1,2,3,1]){pads[0].buttons[0].pressed=true;run('input(1000)');assert.equal(run('state.gear'),expected);run('input(1020)');assert.equal(run('state.gear'),expected,'holding must not repeat');pads[0].buttons[0].pressed=false;run('input(1040)');}
 pads[0].axes=[.6,0,0,.8,-.4];const controls=run('input(2000)');assert(controls.cx>0&&controls.cy<0);assert(run('state.steer')<0,'inversion');
